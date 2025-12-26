@@ -6,8 +6,7 @@ import { getFirestore } from "firebase/firestore";
 
 import { getAuth, initializeAuth } from "firebase/auth";
 //import { getReactNativePersistence } from "firebase/auth/react-native";
-// criando o commit correto
-//testando o commit correto
+
 const firebaseConfig = {
   apiKey: "AIzaSyBNXQdnaaATvFgJ0mmDpeCJ1UOi-d-EH0w",
   authDomain: "alercheck.firebaseapp.com",
