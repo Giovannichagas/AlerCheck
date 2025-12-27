@@ -1,28 +1,21 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-import { getApp, getApps, initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-
-import { getAuth, initializeAuth } from "firebase/auth";
-//import { getReactNativePersistence } from "firebase/auth/react-native";
-
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBNXQdnaaATvFgJ0mmDpeCJ1UOi-d-EH0w",
-  authDomain: "alercheck.firebaseapp.com",
-  projectId: "alercheck",
-  storageBucket: "alercheck.firebasestorage.app",
-  messagingSenderId: "389174712778",
-  appId: "1:389174712778:web:b81ba1927002af2f8f1733",
-  measurementId: "G-PQ8ECZ6CHN",
+  apiKey: "AIzaSyAYVFKiY7P8e_eruErHkuFU4jRhVCLJzbY",
+  authDomain: "alerchek-eff98.firebaseapp.com",
+  projectId: "alerchek-eff98",
+  storageBucket: "alerchek-eff98.firebasestorage.app",
+  messagingSenderId: "914629861616",
+  appId: "1:914629861616:web:eb0a285300dbbc99736235",
+  measurementId: "G-K9RMLXFDBD"
 };
 
-export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-
-export const auth =
-  Platform.OS === "web"
-    ? getAuth(app)
-    : initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage),
-      });
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);

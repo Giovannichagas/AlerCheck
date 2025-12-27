@@ -2,15 +2,15 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    useWindowDimensions,
-    View,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -73,10 +73,10 @@ export default function ScanScreen() {
 
               <View style={styles.headerIcons}>
                 <View style={styles.smallCircle}>
-                  <Ionicons name="person-outline" size={16} color="#cfd6dd" />
+                  <Ionicons name="notifications-outline" size={16} color="#000" />
                 </View>
                 <View style={styles.smallCircle}>
-                  <Ionicons name="person-outline" size={16} color="#cfd6dd" />
+                  <Ionicons name="person-outline" size={16} color="#000" />
                 </View>
               </View>
             </View>
@@ -94,7 +94,7 @@ export default function ScanScreen() {
               <Text style={styles.scanHint}>Point camera at barcode</Text>
 
               <Pressable style={styles.scanBtn} onPress={() => router.push("/(tabs)/camera")}>
-                <Ionicons name="camera-outline" size={16} color="#0f2a10" />
+                <Ionicons name="camera-outline" size={16} color="#4AB625" />
                 <Text style={styles.scanBtnText}>Start Scanning</Text>
               </Pressable>
             </View>
@@ -176,7 +176,7 @@ function AllergenItem({
       <Switch
         value={enabled}
         onValueChange={onToggle}
-        trackColor={{ false: "#2a333b", true: "#2ecc71" }}
+        trackColor={{ false: "#2a333b", true: "#4AB625" }}
         thumbColor={enabled ? "#ffffff" : "#ffffff"}
         ios_backgroundColor="#2a333b"
       />
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     height: "100%",
-    backgroundColor: "#0b0f12",
+    backgroundColor: "#171A1F",
     overflow: "hidden",
     borderRadius: 22,
   },
@@ -213,18 +213,18 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 8,
-    backgroundColor: "#1a2229",
+    backgroundColor: "#171A1F",
     alignItems: "center",
     justifyContent: "center",
   },
-  brandBadgeText: { color: "#2ecc71", fontWeight: "900" },
+  brandBadgeText: { color: "#4AB625", fontWeight: "900" },
   brandText: { color: "#dce3ea", fontWeight: "800", fontSize: 14 },
   headerIcons: { flexDirection: "row", gap: 10 },
   smallCircle: {
     width: 30,
     height: 30,
     borderRadius: 999,
-    backgroundColor: "#151d23",
+    backgroundColor: "#FFF",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   },
 
   scanCard: {
-    backgroundColor: "#39b54a",
+    backgroundColor: "#4AB625",
     borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 16,
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "#4AB625",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
@@ -270,12 +270,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#d7f5dc",
+    backgroundColor: "#FFF",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 999,
   },
-  scanBtnText: { color: "#0f2a10", fontWeight: "900", fontSize: 12 },
+  scanBtnText: { color: "#4AB625", fontWeight: "900", fontSize: 12 },
 
   sectionTitle: {
     color: "rgba(255,255,255,0.9)",
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   input: {
     width: "100%",
     borderWidth: 1,
-    borderColor: "rgba(46,204,113,0.5)",
+    borderColor: "#4AB625",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: 10,
-    backgroundColor: "#2ecc71",
+    backgroundColor: "#4AB625",
     borderRadius: 14,
     paddingVertical: 12,
     alignItems: "center",
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: "#0f151a",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "#4AB625",
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,

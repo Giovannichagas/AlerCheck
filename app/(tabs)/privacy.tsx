@@ -1,17 +1,17 @@
 import { router } from "expo-router";
 import React from "react";
 import {
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const GREEN = "#32c866";
+const GREEN = "#4AB625";
 
 export default function PrivacyScreen() {
   const insets = useSafeAreaInsets();
@@ -101,7 +101,7 @@ export default function PrivacyScreen() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#171A1F",
     alignItems: "center",
   },
 
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     maxWidth: 420,
-    backgroundColor: "#000",
+    backgroundColor: "#171A1F",
   },
 
   // No web (tela larga), dá aparência de “telefone”
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 18,
     paddingTop: 10,
-    backgroundColor: "rgba(0,0,0,0.92)",
+    backgroundColor: "171A1F",
     flexDirection: "row",
     gap: 12,
   },
@@ -192,9 +192,7 @@ const styles = StyleSheet.create({
   },
 
   btnGhost: {
-    backgroundColor: "#151515",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "#4AB625",
   },
   btnGhostText: {
     color: "#fff",
@@ -203,10 +201,10 @@ const styles = StyleSheet.create({
   },
 
   btnPrimary: {
-    backgroundColor: GREEN,
+    backgroundColor: "#4AB625",
   },
   btnPrimaryText: {
-    color: "#0b0b0b",
+    color: "#fff",
     fontWeight: "900",
     fontSize: 13,
   },

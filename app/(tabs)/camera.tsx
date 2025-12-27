@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   text: { color: "#fff", textAlign: "center", marginBottom: 14 },
   btn: {
-    backgroundColor: "#2ecc71",
+    backgroundColor: "#4AB625",
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 12,
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 18,
     borderWidth: 2,
-    borderColor: "rgba(46,204,113,0.9)",
+    borderColor: "#4AB625",
     backgroundColor: "rgba(0,0,0,0.15)",
   },
   hint: { color: "rgba(255,255,255,0.8)", marginTop: 14, fontWeight: "700" },
@@ -248,6 +248,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 999,
-    backgroundColor: "#2ecc71",
+    backgroundColor: "#4AB625",
   },
 });

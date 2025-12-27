@@ -94,7 +94,7 @@ function Feature({ text }: { text: string }) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#0b0f12",
+    backgroundColor: "#171A1F",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     overflow: "hidden",
-    backgroundColor: "#000",
+    backgroundColor: "#171A1F",
   },
 
   bg: {
@@ -125,10 +125,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(64, 201, 88, 0.35)",
+    backgroundColor: "#4AB625",
   },
   dotActive: {
-    backgroundColor: "rgba(64, 201, 88, 1)",
+    backgroundColor: "#4AB625",
   },
 
   card: {
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     left: 18,
     right: 18,
     bottom: 18,
-    backgroundColor: "rgba(18, 25, 31, 0.95)",
+    backgroundColor: "#171A1F",
     borderRadius: 22,
     paddingVertical: 18,
     paddingHorizontal: 18,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   titleGreen: {
-    color: "#40C958",
+    color: "#4AB625",
   },
 
   subtitle: {
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   check: {
-    color: "#40C958",
+    color: "#4AB625",
     fontSize: 18,
     fontWeight: "900",
     width: 18,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   },
 
   primaryBtn: {
-    backgroundColor: "#40C958",
+    backgroundColor: "#4AB625",
     borderRadius: 14,
     paddingVertical: 13,
     alignItems: "center",

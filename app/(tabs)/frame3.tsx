@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   // Fundo do site (web) ou tela (mobile)
   page: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#171A1F",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     overflow: "hidden",
-    backgroundColor: "#000",
+    backgroundColor: "#171A1F",
   },
 
   // Imagem precisa ocupar 100% do container
@@ -146,10 +146,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(46, 204, 113, 0.35)",
+    backgroundColor: "#4AB625",
   },
   dotActive: {
-    backgroundColor: "rgba(46, 204, 113, 1)",
+    backgroundColor: "#4AB625",
   },
 
   card: {
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     left: 18,
     right: 18,
     bottom: 22,
-    backgroundColor: "rgba(18, 26, 33, 0.92)",
+    backgroundColor: "#171A1F",
     borderRadius: 22,
     paddingVertical: 20,
     paddingHorizontal: 18,
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   titleAccent: {
-    color: "#2ecc71",
+    color: "#4AB625",
   },
 
   subtitle: {
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   check: {
-    color: "#2ecc71",
+    color: "#4AB625",
     fontSize: 18,
     fontWeight: "900",
     width: 18,
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   },
 
   primaryBtn: {
-    backgroundColor: "#2ecc71",
+    backgroundColor: "#4AB625",
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: "center",
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#2ecc71",
+    borderColor: "#4AB625",
     backgroundColor: "transparent",
   },
 
