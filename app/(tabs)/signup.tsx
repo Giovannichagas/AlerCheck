@@ -1,17 +1,17 @@
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    useWindowDimensions,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
 } from "react-native";
 
 const LOGO = require("../../assets/images/logo.jpeg");
@@ -20,7 +20,6 @@ const LOGO = require("../../assets/images/logo.jpeg");
 const ICON_GOOGLE = require("../../assets/images/google.jpg");
 const ICON_APPLE = require("../../assets/images/apple.jpg");
 const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
-const ICON_INSTAGRAM = require("../../assets/images/instagram.jpg");
 
 export default function SignUpScreen() {
   const { width, height } = useWindowDimensions();
@@ -156,10 +155,7 @@ export default function SignUpScreen() {
                     icon={ICON_FACEBOOK}
                     onPress={() => onSocial("Facebook")}
                   />
-                  <SocialIcon
-                    icon={ICON_INSTAGRAM}
-                    onPress={() => onSocial("Instagram")}
-                  />
+                  
                 </View>
               </View>
             </View>
