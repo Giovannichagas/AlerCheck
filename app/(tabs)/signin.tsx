@@ -22,7 +22,7 @@ const LOGO = require("../../assets/images/logo.jpeg");
 const ICON_GOOGLE = require("../../assets/images/google.jpg");
 const ICON_APPLE = require("../../assets/images/apple.jpg");
 const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
-const ICON_INSTAGRAM = require("../../assets/images/instagram.jpg");
+
 
 export default function SignInScreen() {
   const { width, height } = useWindowDimensions();
@@ -165,10 +165,7 @@ export default function SignInScreen() {
                     icon={ICON_FACEBOOK}
                     onPress={() => onSocial("Facebook")}
                   />
-                  <SocialIcon
-                    icon={ICON_INSTAGRAM}
-                    onPress={() => onSocial("Instagram")}
-                  />
+                  
                 </View>
               </View>
             </View>

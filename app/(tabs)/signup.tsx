@@ -52,7 +52,7 @@ export default function SignUpScreen() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       const user = userCredential.user;
       Alert.alert("Conta criada!", `Bem-vindo ${user.email}`);
-      router.push("/(tabs)"); // navega pra home
+      router.push("../app/(tabs)/index"); // navega pra home
     } catch (error: any) {
       Alert.alert("Erro ao criar conta", error.message);
     }
