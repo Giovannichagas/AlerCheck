@@ -21,7 +21,6 @@ const LOGO = require("../../assets/images/logo.jpeg");
 const ICON_GOOGLE = require("../../assets/images/google.jpg");
 const ICON_APPLE = require("../../assets/images/apple.jpg");
 const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
-const ICON_INSTAGRAM = require("../../assets/images/instagram.jpg");
 
 export default function SignUpScreen() {
   const { width, height } = useWindowDimensions();
@@ -100,7 +99,6 @@ export default function SignUpScreen() {
                   <SocialIcon icon={ICON_GOOGLE} onPress={() => onSocial("Google")} />
                   <SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
                   <SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
-                  <SocialIcon icon={ICON_INSTAGRAM} onPress={() => onSocial("Instagram")} />
                 </View>
               </View>
             </View>
