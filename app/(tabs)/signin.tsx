@@ -23,16 +23,13 @@ const ICON_GOOGLE = require("../../assets/images/google.jpg");
 const ICON_APPLE = require("../../assets/images/apple.jpg");
 const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
 
-
 export default function SignInScreen() {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  const PHONE_MAX_W = 420;
-  const PHONE_MAX_H = 920;
-
-  const phoneW = isWeb ? Math.min(width, PHONE_MAX_W) : width;
-  const phoneH = isWeb ? Math.min(height, PHONE_MAX_H) : height;
+  // ✅ Responsivo: container não estica infinito no web
+  const CONTENT_MAX_W = 520;
+  const contentW = Math.max(320, Math.min(width - 36, CONTENT_MAX_W));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -78,23 +75,23 @@ export default function SignInScreen() {
 
   return (
     <View style={styles.page}>
-      <View
-        style={[
-          styles.phoneFrame,
-          isWeb && { width: phoneW, height: phoneH, borderRadius: 26 },
-        ]}
+      <KeyboardAvoidingView
+        style={{ flex: 1, width: "100%" }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-          >
+          {/* ✅ Wrapper responsivo (não muda layout, só centraliza no web) */}
+          <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
             {/* BACK */}
             <View style={styles.topRow}>
-              <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
+              <Pressable
+                onPress={() => router.replace("/(tabs)/frame3")}
+                style={styles.backBtn}
+              >
                 <Text style={styles.backText}>‹</Text>
               </Pressable>
             </View>
@@ -134,10 +131,7 @@ export default function SignInScreen() {
               {/* BOTTOM */}
               <View style={styles.bottomArea}>
                 <Pressable
-                  style={[
-                    styles.primaryBtn,
-                    loading && { opacity: 0.6 },
-                  ]}
+                  style={[styles.primaryBtn, loading && { opacity: 0.6 }]}
                   onPress={onSignIn}
                   disabled={loading}
                 >
@@ -153,36 +147,22 @@ export default function SignInScreen() {
                 </View>
 
                 <View style={styles.socialRow}>
-                  <SocialIcon
-                    icon={ICON_GOOGLE}
-                    onPress={() => onSocial("Google")}
-                  />
-                  <SocialIcon
-                    icon={ICON_APPLE}
-                    onPress={() => onSocial("Apple")}
-                  />
-                  <SocialIcon
-                    icon={ICON_FACEBOOK}
-                    onPress={() => onSocial("Facebook")}
-                  />
-                  
+                  <SocialIcon icon={ICON_GOOGLE} onPress={() => onSocial("Google")} />
+                  <SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
+                  <SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
                 </View>
               </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
+          </View>
+
+          <View style={{ height: 28 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
-function SocialIcon({
-  icon,
-  onPress,
-}: {
-  icon: any;
-  onPress: () => void;
-}) {
+function SocialIcon({ icon, onPress }: { icon: any; onPress: () => void }) {
   return (
     <Pressable style={styles.socialBtn} onPress={onPress}>
       <Image source={icon} style={styles.socialIcon} />
@@ -192,24 +172,30 @@ function SocialIcon({
 
 // 🎨 STYLES
 const styles = StyleSheet.create({
+  // ✅ padrão igual às outras telas responsivas
   page: {
     flex: 1,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#0b0f12",
   },
-  phoneFrame: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#171A1F",
-  },
+
   scroll: {
     flexGrow: 1,
+    padding: 16,
+    paddingBottom: 24,
+  },
+
+  // ✅ container interno (não altera layout, só limita largura no web)
+  contentWrap: {
+    flex: 1,
+    backgroundColor: "#171A1F",
+    borderRadius: 18,
     paddingHorizontal: 22,
     paddingTop: 16,
     paddingBottom: 28,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
+
   topRow: { height: 40, justifyContent: "center" },
   backBtn: {
     width: 40,
@@ -219,8 +205,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   backText: { color: "#fff", fontSize: 28 },
+
   header: { alignItems: "center", marginBottom: 16 },
   logo: { width: 100, height: 92, resizeMode: "contain" },
+
   title: {
     color: "#fff",
     fontSize: 18,
@@ -228,7 +216,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 18,
   },
+
   form: { flex: 1 },
+
   input: {
     height: 46,
     borderRadius: 12,
@@ -239,9 +229,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: "rgba(0,0,0,0.22)",
   },
+
   forgotWrap: { alignSelf: "flex-end", marginBottom: 18 },
   forgot: { color: "#4AB625", fontWeight: "700", fontSize: 12 },
+
   bottomArea: { marginTop: "auto" },
+
   primaryBtn: {
     backgroundColor: "#4AB625",
     borderRadius: 16,
@@ -250,6 +243,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   primaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
+
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -262,6 +256,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+
   socialRow: { flexDirection: "row", justifyContent: "center", gap: 18 },
   socialBtn: {
     width: 58,

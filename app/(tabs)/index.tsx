@@ -1,83 +1,88 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import React from "react";
-
 import {
   ImageBackground,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const BG = require("../../assets/images/frame1.jpeg");
 
 export default function HomeScreen() {
-  const { width, height } = useWindowDimensions();
-  const isWeb = Platform.OS === "web";
-
-  // “Moldura de celular” no navegador pra ficar igual ao mobile
-  const PHONE_MAX_W = 420;
-  const PHONE_MAX_H = 900;
-
-  const phoneW = isWeb ? Math.min(width, PHONE_MAX_W) : width;
-  const phoneH = isWeb ? Math.min(height, PHONE_MAX_H) : height;
-
   return (
     <View style={styles.page}>
-      <View
-        style={[
-          styles.phoneFrame,
-          isWeb && { width: phoneW, height: phoneH, borderRadius: 26 },
-        ]}
-      >
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
-          {/* Escurece embaixo para dar contraste no card */}
+          {/* Overlay para contraste */}
           <LinearGradient
-            colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.9)"]}
+            colors={[
+              "rgba(0,0,0,0.25)",
+              "rgba(0,0,0,0.35)",
+              "rgba(0,0,0,0.92)",
+            ]}
             style={StyleSheet.absoluteFillObject}
           />
 
-          {/* Dots (indicador de páginas) */}
-          <View style={styles.dots}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-          </View>
+          <View style={styles.scrollLike}>
+            {/* Top area (dots + título) */}
+            <View style={styles.topArea}>
+              <View style={styles.dots}>
+                <View style={[styles.dot, styles.dotActive]} />
+                <View style={styles.dot} />
+                <View style={styles.dot} />
+              </View>
 
-          {/* Card inferior */}
-          <View style={styles.card}>
-            <Text style={styles.welcome}>Welcome to</Text>
+              <Text style={styles.heroTitle}>
+                Allergens <Text style={styles.heroGreen}>check</Text>
+              </Text>
 
-            <Text style={styles.title}>
-              Allergens <Text style={styles.titleGreen}>check</Text>
-            </Text>
-
-            <Text style={styles.subtitle}>
-              Scan products instantly to check for allergens{"\n"}
-              and make informed shopping decisions.
-            </Text>
-
-            <View style={styles.list}>
-              <Feature text="Quick Barcode Scanning" />
-              <Feature text="Allergen Detection" />
-              <Feature text="Personalized Preferences" />
-              <Feature text="Scan History Tracking" />
+              <Text style={styles.heroSub}>
+                Scan products instantly to check for allergens{"\n"}
+                and make informed shopping decisions.
+              </Text>
             </View>
-            
-            <Pressable style={styles.primaryBtn} onPress={() => router.push("/privacy")}>
-              <Text style={styles.primaryBtnText}>Get Started</Text>
-            </Pressable>
 
-            <Text style={styles.legal}>
-              By continuing, you agree to our Terms of Service{"\n"}
-              and Privacy Policy
-            </Text>
+            {/* Card inferior (responsivo) */}
+            <View style={styles.card}>
+              <Text style={styles.welcome}>Welcome to</Text>
+
+              <Text style={styles.title}>
+                Allergens <Text style={styles.titleGreen}>check</Text>
+              </Text>
+
+              <Text style={styles.subtitle}>
+                Scan products instantly to check for allergens{"\n"}
+                and make informed shopping decisions.
+              </Text>
+
+              <View style={styles.list}>
+                <Feature text="Quick Barcode Scanning" />
+                <Feature text="Allergen Detection" />
+                <Feature text="Personalized Preferences" />
+                <Feature text="Scan History Tracking" />
+              </View>
+
+              <Pressable
+                style={styles.primaryBtn}
+                onPress={() => router.push("/privacy")}
+              >
+                <Text style={styles.primaryBtnText}>Get Started</Text>
+              </Pressable>
+
+              <Text style={styles.legal}>
+                By continuing, you agree to our Terms of Service{"\n"}
+                and Privacy Policy
+              </Text>
+            </View>
           </View>
         </ImageBackground>
-      </View>
+      </SafeAreaView>
     </View>
   );
 }
@@ -92,61 +97,73 @@ function Feature({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  page: {
+  // ✅ padrão igual Scan/History
+  page: { flex: 1, backgroundColor: "#0b0f12" },
+
+  bg: { flex: 1, width: "100%", height: "100%" },
+
+  // ✅ container “tipo scroll” com padding (igual screens responsivas)
+  scrollLike: {
     flex: 1,
-    backgroundColor: "#171A1F",
+    padding: 16,
+    paddingBottom: 24,
+    justifyContent: "space-between",
+  },
+
+  topArea: {
+    paddingTop: 8,
     alignItems: "center",
-    justifyContent: "center",
-  },
-
-  phoneFrame: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-    backgroundColor: "#171A1F",
-  },
-
-  bg: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
   },
 
   dots: {
-    position: "absolute",
-    top: 210,
-    alignSelf: "center",
     flexDirection: "row",
     gap: 8,
     opacity: 0.95,
+    marginBottom: 12,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#4AB625",
+    backgroundColor: "rgba(255,255,255,0.25)",
   },
   dotActive: {
     backgroundColor: "#4AB625",
   },
 
+  heroTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "900",
+    textAlign: "center",
+    marginTop: 2,
+  },
+  heroGreen: { color: "#4AB625" },
+
+  heroSub: {
+    color: "rgba(255,255,255,0.70)",
+    fontSize: 12.5,
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 8,
+  },
+
+  // ✅ card no estilo das outras telas
   card: {
-    position: "absolute",
-    left: 18,
-    right: 18,
-    bottom: 18,
-    backgroundColor: "#171A1F",
-    borderRadius: 22,
+    alignSelf: "stretch",
+    backgroundColor: "rgba(11,15,18,0.82)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 18,
   },
 
   welcome: {
-    color: "#fff",
-    fontSize: 14,
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
     textAlign: "center",
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: 6,
   },
 
@@ -157,9 +174,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginBottom: 8,
   },
-  titleGreen: {
-    color: "#4AB625",
-  },
+  titleGreen: { color: "#4AB625" },
 
   subtitle: {
     color: "rgba(255,255,255,0.78)",
@@ -189,7 +204,7 @@ const styles = StyleSheet.create({
   featureText: {
     color: "#fff",
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 
   primaryBtn: {

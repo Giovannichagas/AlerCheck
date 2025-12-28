@@ -16,31 +16,24 @@ const BG = require("../../assets/images/meanImage.jpeg");
 const LOGO = require("../../assets/images/logo.jpeg");
 
 export default function HomeScreen() {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // “Moldura de celular” no web (pra ficar igual ao mobile)
-  const PHONE_MAX_W = 420;
-  const PHONE_MAX_H = 920;
-
-  const phoneW = isWeb ? Math.min(width, PHONE_MAX_W) : width;
-  const phoneH = isWeb ? Math.min(height, PHONE_MAX_H) : height;
+  // ✅ Responsivo: o card não estica infinito no web
+  const CARD_MAX_W = 640;
+  const cardW = Math.max(280, Math.min(width - 36, CARD_MAX_W));
 
   return (
     <View style={styles.page}>
-      <View
-        style={[
-          styles.phoneFrame,
-          isWeb && { width: phoneW, height: phoneH, borderRadius: 26 },
-        ]}
-      >
-        <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
-          {/* Escurece a parte de baixo (igual mock) */}
-          <LinearGradient
-            colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.92)"]}
-            style={StyleSheet.absoluteFillObject}
-          />
+      <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
+        {/* Escurece a parte de baixo (igual seu mock) */}
+        <LinearGradient
+          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.92)"]}
+          style={StyleSheet.absoluteFillObject}
+        />
 
+        {/* Overlay para posicionar dots e card */}
+        <View style={styles.overlay}>
           {/* Indicadores (bolinhas) */}
           <View style={styles.dots}>
             <View style={[styles.dot, styles.dotActive]} />
@@ -48,8 +41,8 @@ export default function HomeScreen() {
             <View style={styles.dot} />
           </View>
 
-          {/* Card inferior */}
-          <View style={styles.card}>
+          {/* Card inferior (mesmo layout, agora responsivo) */}
+          <View style={[styles.card, { width: cardW, alignSelf: "center" }]}>
             <Image source={LOGO} style={styles.logo} />
 
             <Text style={styles.welcome}>Bem-vindo(a) ao</Text>
@@ -71,22 +64,21 @@ export default function HomeScreen() {
             </View>
 
             <Pressable
-                style={styles.primaryBtn}
-                onPress={() => {
-                  // exemplo: ir para a tela de privacidade
-                  router.push("/signin");
-                }}
-              >
-                <Text style={styles.primaryBtnText}>Comece agora</Text>
-              </Pressable>
+              style={styles.primaryBtn}
+              onPress={() => {
+                router.push("/signin");
+              }}
+            >
+              <Text style={styles.primaryBtnText}>Comece agora</Text>
+            </Pressable>
 
-              <Pressable
-                style={styles.secondaryBtn}
-                onPress={() => {
-                  router.push("/signup"); // sua rota de cadastro
-                }}
-              >
-                <Text style={styles.secondaryBtnText}>Create an Account</Text>
+            <Pressable
+              style={styles.secondaryBtn}
+              onPress={() => {
+                router.push("/signup");
+              }}
+            >
+              <Text style={styles.secondaryBtnText}>Create an Account</Text>
             </Pressable>
 
             <Text style={styles.legal}>
@@ -94,8 +86,8 @@ export default function HomeScreen() {
               Política de Privacidade.
             </Text>
           </View>
-        </ImageBackground>
-      </View>
+        </View>
+      </ImageBackground>
     </View>
   );
 }
@@ -110,28 +102,20 @@ function Feature({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  // Fundo do site (web) ou tela (mobile)
+  // ✅ Agora o web usa tela inteira (igual as outras telas)
   page: {
     flex: 1,
-    backgroundColor: "#171A1F",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#0b0f12",
   },
 
-  // No mobile, ocupa tudo. No web, vira o “frame do celular”
-  phoneFrame: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-    backgroundColor: "#171A1F",
-  },
-
-  // Imagem precisa ocupar 100% do container
   bg: {
     flex: 1,
     width: "100%",
     height: "100%",
+  },
+
+  overlay: {
+    flex: 1,
   },
 
   dots: {
@@ -147,20 +131,24 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 999,
     backgroundColor: "#4AB625",
+    opacity: 0.55,
   },
   dotActive: {
     backgroundColor: "#4AB625",
+    opacity: 1,
   },
 
   card: {
     position: "absolute",
-    left: 18,
-    right: 18,
     bottom: 22,
     backgroundColor: "#171A1F",
     borderRadius: 22,
     paddingVertical: 20,
     paddingHorizontal: 18,
+
+    // ✅ ajuda a ficar com “cara” das outras telas no web
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
   },
 
   logo: {
@@ -236,13 +224,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  legal: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 10.5,
-    textAlign: "center",
-    marginTop: 10,
-    lineHeight: 14,
-  },
   secondaryBtn: {
     marginTop: 12,
     borderRadius: 16,
@@ -253,10 +234,17 @@ const styles = StyleSheet.create({
     borderColor: "#4AB625",
     backgroundColor: "transparent",
   },
-
   secondaryBtnText: {
     color: "#fff",
     fontSize: 15,
     fontWeight: "800",
+  },
+
+  legal: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 10.5,
+    textAlign: "center",
+    marginTop: 10,
+    lineHeight: 14,
   },
 });

@@ -1,18 +1,16 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
-  useWindowDimensions,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -38,17 +36,7 @@ type ScanParams = {
 };
 
 export default function ScanScreen() {
-  const { width, height } = useWindowDimensions();
-  const isWeb = Platform.OS === "web";
-
-  // ✅ se a tela de camera voltar com photoUri por params, a gente pega aqui
   const { photoUri: photoUriParam } = useLocalSearchParams<ScanParams>();
-
-  // Moldura de celular no web
-  const PHONE_MAX_W = 420;
-  const PHONE_MAX_H = 920;
-  const phoneW = isWeb ? Math.min(width, PHONE_MAX_W) : width;
-  const phoneH = isWeb ? Math.min(height, PHONE_MAX_H) : height;
 
   const [ingredients, setIngredients] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -56,6 +44,15 @@ export default function ScanScreen() {
   const [search, setSearch] = useState("");
   const [allergens, setAllergens] = useState<Allergen[]>(INITIAL_ALLERGENS);
 
+  // ✅ reset do estado quando a tela monta (equivale ao “início” do app no seu cenário atual)
+  useEffect(() => {
+    setIngredients("");
+    setPhotoUri(null);
+    setSearch("");
+    setAllergens(INITIAL_ALLERGENS);
+  }, []);
+
+  // ✅ aplica photoUri vindo da camera
   useEffect(() => {
     if (typeof photoUriParam === "string" && photoUriParam.length > 0) {
       setPhotoUri(photoUriParam);
@@ -74,12 +71,9 @@ export default function ScanScreen() {
     );
   }
 
-  // ✅ envia ingredientes + foto + alergias TRUE para scanResult
   function handleSubmit() {
     const text = ingredients.trim();
-    const selectedAllergens = allergens
-      .filter((a) => a.enabled)
-      .map((a) => a.label);
+    const selectedAllergens = allergens.filter((a) => a.enabled).map((a) => a.label);
 
     if (!text && !photoUri) {
       Alert.alert("Atenção", "Digite os ingredientes ou tire uma foto antes de enviar.");
@@ -89,75 +83,78 @@ export default function ScanScreen() {
     const payload = {
       ingredients: text,
       photoUri: photoUri ?? null,
-      selectedAllergens, // ✅ somente TRUE
+      selectedAllergens,
     };
-
-    console.log("ENVIANDO payload:", payload);
 
     router.push({
       pathname: "/(tabs)/scanResult",
-      params: {
-        payload: encodeURIComponent(JSON.stringify(payload)),
-      },
+      params: { payload: encodeURIComponent(JSON.stringify(payload)) },
     });
   }
 
   return (
     <View style={styles.page}>
-      <View style={[styles.phoneFrame, isWeb && { width: phoneW, height: phoneH }]}>
-        <SafeAreaView style={styles.safe} edges={["top"]}>
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            {/* HEADER */}
-            <View style={styles.headerRow}>
-              <View style={styles.brandRow}>
-                <View style={styles.brandBadge}>
-                  <Text style={styles.brandBadgeText}>A</Text>
-                </View>
-                <Text style={styles.brandText}>AlerCheck</Text>
-              </View>
+      <Stack.Screen options={{ headerShown: false }} />
 
-              <View style={styles.headerIcons}>
-                <View style={styles.smallCircle}>
-                  <Ionicons name="notifications-outline" size={16} color="#000" />
-                </View>
-                <View style={styles.smallCircle}>
-                  <Ionicons name="person-outline" size={16} color="#000" />
-                </View>
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* HEADER (mantive seu padrão de marca + ícones) */}
+          <View style={styles.headerRow}>
+            <View style={styles.brandRow}>
+              <View style={styles.brandBadge}>
+                <Text style={styles.brandBadgeText}>A</Text>
               </View>
+              <Text style={styles.brandText}>AlerCheck</Text>
             </View>
 
-            <Text style={styles.h1}>Target Allergen Scanner</Text>
-            <Text style={styles.sub}>Stay Safe by Scanning Products for Allergens</Text>
-
-            {/* CARD VERDE */}
-            <View style={styles.scanCard}>
-              <View style={styles.scanIconWrap}>
-                <Ionicons name="camera-outline" size={22} color="#fff" />
-              </View>
-
-              <Text style={styles.scanTitle}>Scan a Product</Text>
-              <Text style={styles.scanHint}>Point camera at barcode</Text>
-
-              <Pressable style={styles.scanBtn} onPress={() => router.push("/(tabs)/camera")}>
-                <Ionicons name="camera-outline" size={16} color="#4AB625" />
-                <Text style={styles.scanBtnText}>Start Scanning</Text>
-              </Pressable>
-
-              {/* Preview da foto */}
-              {photoUri ? (
-                <View style={styles.photoPreviewBox}>
-                  <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.photoLabel}>Photo added</Text>
-                    <Pressable onPress={() => setPhotoUri(null)} hitSlop={10}>
-                      <Text style={styles.photoRemove}>Remove photo</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ) : null}
+            <View style={styles.headerCenter}>
+              <Text style={styles.h1}>Target Allergen Scanner</Text>
+              <Text style={styles.sub}>Stay Safe by Scanning Products for Allergens</Text>
             </View>
 
-            {/* DESCRIBE INGREDIENTS */}
+            <View style={styles.headerIcons}>
+              <View style={styles.smallCircle}>
+                <Ionicons name="notifications-outline" size={16} color="#000" />
+              </View>
+              <View style={styles.smallCircle}>
+                <Ionicons name="person-outline" size={16} color="#000" />
+              </View>
+            </View>
+          </View>
+
+          {/* ✅ SCAN A PRODUCT (voltei para o layout “original” verde e centralizado) */}
+          <View style={styles.scanCard}>
+            <View style={styles.scanIconWrap}>
+              <Ionicons name="camera-outline" size={22} color="#fff" />
+            </View>
+
+            <Text style={styles.scanTitle}>Scan a Product</Text>
+            <Text style={styles.scanHint}>Point camera at barcode</Text>
+
+            <Pressable style={styles.scanBtn} onPress={() => router.push("/(tabs)/camera")}>
+              <Ionicons name="camera-outline" size={16} color="#4AB625" />
+              <Text style={styles.scanBtnText}>Start Scanning</Text>
+            </Pressable>
+
+            {/* Preview da foto */}
+            {photoUri ? (
+              <View style={styles.photoPreviewBox}>
+                <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.photoLabel}>Photo added</Text>
+                  <Pressable onPress={() => setPhotoUri(null)} hitSlop={10}>
+                    <Text style={styles.photoRemove}>Remove photo</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+          </View>
+
+          {/* INGREDIENTS */}
+          <View style={styles.card}>
             <Text style={styles.sectionTitle}>Describe ingredients (for AI)</Text>
             <TextInput
               value={ingredients}
@@ -169,13 +166,14 @@ export default function ScanScreen() {
               textAlignVertical="top"
             />
 
-            {/* SUBMIT */}
             <Pressable style={styles.submitBtn} onPress={handleSubmit}>
               <Text style={styles.submitBtnText}>Submit</Text>
             </Pressable>
+          </View>
 
-            {/* ALLERGENS */}
-            <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Allergens</Text>
+          {/* ALLERGENS */}
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Allergens</Text>
             <Text style={styles.help}>
               Select the allergens you want to be alerted about when scanning products.
             </Text>
@@ -204,11 +202,11 @@ export default function ScanScreen() {
                 onToggle={() => toggleAllergen(a.id)}
               />
             ))}
+          </View>
 
-            <View style={{ height: 30 }} />
-          </ScrollView>
-        </SafeAreaView>
-      </View>
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -243,36 +241,43 @@ function AllergenItem({
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
-  phoneFrame: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#171A1F",
-    overflow: "hidden",
-    borderRadius: 22,
-  },
-  safe: { flex: 1 },
-  content: { paddingHorizontal: 18, paddingBottom: 30 },
+  // ✅ igual History
+  page: { flex: 1, backgroundColor: "#0b0f12" },
+
+  // ✅ igual History: padding 16 e FULL WIDTH (sem maxWidth / sem centralizar)
+  scroll: { padding: 16, paddingBottom: 24, width: "100%" },
 
   headerRow: {
-    marginTop: 6,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 14,
+    gap: 12,
   },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 8, minWidth: 110 },
   brandBadge: {
     width: 26,
     height: 26,
     borderRadius: 8,
-    backgroundColor: "#171A1F",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
   },
   brandBadgeText: { color: "#4AB625", fontWeight: "900" },
-  brandText: { color: "#dce3ea", fontWeight: "800", fontSize: 14 },
-  headerIcons: { flexDirection: "row", gap: 10 },
+  brandText: { color: "#dce3ea", fontWeight: "900", fontSize: 14 },
+
+  headerCenter: { flex: 1, alignItems: "center" },
+  h1: { color: "#ffffff", fontSize: 16, fontWeight: "900", textAlign: "center" },
+  sub: {
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
+    marginTop: 4,
+    fontSize: 11.5,
+  },
+
+  headerIcons: { flexDirection: "row", gap: 10, minWidth: 110, justifyContent: "flex-end" },
   smallCircle: {
     width: 30,
     height: 30,
@@ -282,16 +287,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  h1: { color: "#fff", fontSize: 16, fontWeight: "800", textAlign: "center", marginTop: 12 },
-  sub: {
-    color: "rgba(255,255,255,0.55)",
-    textAlign: "center",
-    marginTop: 6,
-    fontSize: 11.5,
-    marginBottom: 14,
-  },
-
+  // ✅ Scan a Product (verde grande, como antes) – e agora “stretch” para ocupar a largura
   scanCard: {
+    alignSelf: "stretch",
     backgroundColor: "#4AB625",
     borderRadius: 18,
     paddingVertical: 18,
@@ -301,6 +299,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 3,
+    marginBottom: 12,
   },
   scanIconWrap: {
     width: 52,
@@ -343,13 +342,18 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  sectionTitle: {
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "800",
-    marginTop: 16,
-    marginBottom: 10,
-    fontSize: 12.5,
+  // ✅ cards igual History
+  card: {
+    alignSelf: "stretch",
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginBottom: 12,
   },
+
+  sectionTitle: { color: "#fff", fontWeight: "900", fontSize: 13, marginBottom: 10 },
 
   textArea: {
     width: "100%",
@@ -361,7 +365,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     backgroundColor: "#0f151a",
     fontSize: 12.5,
-    minHeight: 88,
+    minHeight: 110,
   },
 
   submitBtn: {
@@ -390,15 +394,15 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, color: "#fff", fontSize: 12.5 },
 
   itemRow: {
-    backgroundColor: "#11181e",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
     marginBottom: 10,
   },
   itemLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -406,9 +410,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: "#1b252d",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
     justifyContent: "center",
   },
-  itemText: { color: "#fff", fontWeight: "700", fontSize: 12.5 },
+  itemText: { color: "#fff", fontWeight: "800", fontSize: 12.5 },
 });
