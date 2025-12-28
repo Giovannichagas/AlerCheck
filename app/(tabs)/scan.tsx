@@ -1,7 +1,9 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -31,9 +33,16 @@ const INITIAL_ALLERGENS: Allergen[] = [
   { id: "shellfish", label: "Shellfish", enabled: false },
 ];
 
+type ScanParams = {
+  photoUri?: string; // vem da tela camera (opcional)
+};
+
 export default function ScanScreen() {
   const { width, height } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
+
+  // ✅ se a tela de camera voltar com photoUri por params, a gente pega aqui
+  const { photoUri: photoUriParam } = useLocalSearchParams<ScanParams>();
 
   // Moldura de celular no web
   const PHONE_MAX_W = 420;
@@ -41,9 +50,17 @@ export default function ScanScreen() {
   const phoneW = isWeb ? Math.min(width, PHONE_MAX_W) : width;
   const phoneH = isWeb ? Math.min(height, PHONE_MAX_H) : height;
 
-  const [barcode, setBarcode] = useState("");
+  const [ingredients, setIngredients] = useState("");
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
   const [allergens, setAllergens] = useState<Allergen[]>(INITIAL_ALLERGENS);
+
+  useEffect(() => {
+    if (typeof photoUriParam === "string" && photoUriParam.length > 0) {
+      setPhotoUri(photoUriParam);
+    }
+  }, [photoUriParam]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -55,6 +72,34 @@ export default function ScanScreen() {
     setAllergens((prev) =>
       prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a))
     );
+  }
+
+  // ✅ envia ingredientes + foto + alergias TRUE para scanResult
+  function handleSubmit() {
+    const text = ingredients.trim();
+    const selectedAllergens = allergens
+      .filter((a) => a.enabled)
+      .map((a) => a.label);
+
+    if (!text && !photoUri) {
+      Alert.alert("Atenção", "Digite os ingredientes ou tire uma foto antes de enviar.");
+      return;
+    }
+
+    const payload = {
+      ingredients: text,
+      photoUri: photoUri ?? null,
+      selectedAllergens, // ✅ somente TRUE
+    };
+
+    console.log("ENVIANDO payload:", payload);
+
+    router.push({
+      pathname: "/(tabs)/scanResult",
+      params: {
+        payload: encodeURIComponent(JSON.stringify(payload)),
+      },
+    });
   }
 
   return (
@@ -97,22 +142,36 @@ export default function ScanScreen() {
                 <Ionicons name="camera-outline" size={16} color="#4AB625" />
                 <Text style={styles.scanBtnText}>Start Scanning</Text>
               </Pressable>
+
+              {/* Preview da foto */}
+              {photoUri ? (
+                <View style={styles.photoPreviewBox}>
+                  <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.photoLabel}>Photo added</Text>
+                    <Pressable onPress={() => setPhotoUri(null)} hitSlop={10}>
+                      <Text style={styles.photoRemove}>Remove photo</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
             </View>
 
-            {/* MANUAL BARCODE */}
-            <Text style={styles.sectionTitle}>Or enter barcode manually</Text>
-
+            {/* DESCRIBE INGREDIENTS */}
+            <Text style={styles.sectionTitle}>Describe ingredients (for AI)</Text>
             <TextInput
-              value={barcode}
-              onChangeText={setBarcode}
-              placeholder="Enter barcode number"
+              value={ingredients}
+              onChangeText={setIngredients}
+              placeholder="Type ingredients here (e.g., peanuts, milk, soy...)"
               placeholderTextColor="rgba(255,255,255,0.45)"
-              style={styles.input}
-              keyboardType="number-pad"
+              style={styles.textArea}
+              multiline
+              textAlignVertical="top"
             />
 
-            <Pressable style={styles.submitBtn} onPress={() => {}}>
-              <Text style={styles.submitBtnText}>Submit Barcode</Text>
+            {/* SUBMIT */}
+            <Pressable style={styles.submitBtn} onPress={handleSubmit}>
+              <Text style={styles.submitBtnText}>Submit</Text>
             </Pressable>
 
             {/* ALLERGENS */}
@@ -137,7 +196,6 @@ export default function ScanScreen() {
               )}
             </View>
 
-            {/* Lista dinâmica (editável!) */}
             {filtered.map((a) => (
               <AllergenItem
                 key={a.id}
@@ -177,7 +235,7 @@ function AllergenItem({
         value={enabled}
         onValueChange={onToggle}
         trackColor={{ false: "#2a333b", true: "#4AB625" }}
-        thumbColor={enabled ? "#ffffff" : "#ffffff"}
+        thumbColor="#ffffff"
         ios_backgroundColor="#2a333b"
       />
     </Pressable>
@@ -185,12 +243,7 @@ function AllergenItem({
 }
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  page: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
   phoneFrame: {
     flex: 1,
     width: "100%",
@@ -229,13 +282,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  h1: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "800",
-    textAlign: "center",
-    marginTop: 12,
-  },
+  h1: { color: "#fff", fontSize: 16, fontWeight: "800", textAlign: "center", marginTop: 12 },
   sub: {
     color: "rgba(255,255,255,0.55)",
     textAlign: "center",
@@ -277,6 +324,25 @@ const styles = StyleSheet.create({
   },
   scanBtnText: { color: "#4AB625", fontWeight: "900", fontSize: 12 },
 
+  photoPreviewBox: {
+    marginTop: 14,
+    width: "100%",
+    backgroundColor: "rgba(0,0,0,0.18)",
+    borderRadius: 14,
+    padding: 10,
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  photoPreview: { width: 54, height: 54, borderRadius: 12, resizeMode: "cover" },
+  photoLabel: { color: "#fff", fontWeight: "900", fontSize: 12, marginBottom: 2 },
+  photoRemove: {
+    color: "rgba(255,255,255,0.85)",
+    textDecorationLine: "underline",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
   sectionTitle: {
     color: "rgba(255,255,255,0.9)",
     fontWeight: "800",
@@ -284,7 +350,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontSize: 12.5,
   },
-  input: {
+
+  textArea: {
     width: "100%",
     borderWidth: 1,
     borderColor: "#4AB625",
@@ -294,9 +361,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     backgroundColor: "#0f151a",
     fontSize: 12.5,
+    minHeight: 88,
   },
+
   submitBtn: {
-    marginTop: 10,
+    marginTop: 12,
     backgroundColor: "#4AB625",
     borderRadius: 14,
     paddingVertical: 12,

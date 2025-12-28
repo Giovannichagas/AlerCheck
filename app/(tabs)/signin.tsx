@@ -58,8 +58,8 @@ export default function SignInScreen() {
 
       Alert.alert("Bem-vindo!", userCredential.user.email || "");
 
-      // 👉 home = app/(tabs)/index.tsx
-      router.replace("/(tabs)");
+      // 👉 home = app/(tabs)/scan.tsx
+      router.replace("/(tabs)/scan");
     } catch (error: any) {
       console.log("LOGIN ERROR:", error);
       Alert.alert("Erro ao entrar", error.message);
@@ -94,7 +94,7 @@ export default function SignInScreen() {
           >
             {/* BACK */}
             <View style={styles.topRow}>
-              <Pressable onPress={() => router.back()} style={styles.backBtn}>
+              <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
                 <Text style={styles.backText}>‹</Text>
               </Pressable>
             </View>

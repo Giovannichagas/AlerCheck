@@ -67,7 +67,7 @@ export default function SignUpScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <View style={styles.topRow}>
-              <Pressable onPress={() => router.back()} style={styles.backBtn}>
+              <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
                 <Text style={styles.backText}>‹</Text>
               </Pressable>
             </View>
