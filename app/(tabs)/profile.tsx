@@ -1,238 +1,403 @@
-// app/(tabs)/profile.tsx
-import { Feather, Ionicons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { router, Stack } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-    Image,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// ✅ Se você já tiver o auth pronto, pode descomentar e usar
-// import { auth } from "../services/firebase";
+import { signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../../app/services/firebase";
+
+const LOGO = require("../../assets/images/logo.jpeg");
+
+
+const FRAME3_ROUTE = "/(tabs)/frame3";
+const HISTORY_ROUTE = "/(tabs)/history";
+const EDIT_PROFILE_ROUTE = "/(tabs)/editProfile";
+
+type UserDoc = {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  photoUrl?: string;
+};
 
 export default function ProfileScreen() {
   const { width, height } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // “moldura de celular” no web
-  const PHONE_MAX_W = 420;
-  const PHONE_MAX_H = 920;
-  const phoneW = isWeb ? Math.min(width, PHONE_MAX_W) : width;
-  const phoneH = isWeb ? Math.min(height, PHONE_MAX_H) : height;
+  // card responsivo no web (igual padrão sign-in/sign-up)
+  const MAX_W = 520;
+  const MAX_H = 920;
+  const cardW = isWeb ? Math.min(width - 32, MAX_W) : "100%";
+  const cardH = isWeb ? Math.min(height - 32, MAX_H) : "100%";
 
-  // 🔸 Dados do usuário (por enquanto mock)
-  // Depois você troca para pegar do Firebase:
-  // const u = auth.currentUser;
-  const user = useMemo(() => {
-    return {
-      name: "Sara Loupez",
-      phone: "+34 612523458",
-      email: "sara123@gmail.com",
-      photo: "https://i.pravatar.cc/200?img=47", // pode trocar por foto real
+  const user = auth.currentUser;
+
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<UserDoc>({
+    fullName: "",
+    phone: "",
+    email: user?.email ?? "",
+    photoUrl: user?.photoURL ?? "",
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      try {
+        if (!user?.uid) {
+          if (mounted) setLoading(false);
+          return;
+        }
+
+        const ref = doc(db, "users", user.uid);
+        const snap = await getDoc(ref);
+
+        if (!mounted) return;
+
+        if (snap.exists()) {
+          const data = snap.data() as UserDoc;
+          setProfile({
+            fullName: data.fullName ?? "",
+            phone: data.phone ?? "",
+            email: data.email ?? user.email ?? "",
+            photoUrl: data.photoUrl ?? user.photoURL ?? "",
+          });
+        } else {
+          setProfile((p) => ({
+            ...p,
+            email: user.email ?? p.email ?? "",
+            photoUrl: user.photoURL ?? p.photoUrl ?? "",
+          }));
+        }
+      } catch (e) {
+        console.log("LOAD PROFILE ERROR:", e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      mounted = false;
     };
-  }, []);
+  }, [user?.uid]);
 
-  function onEdit() {
-    // quando você criar a tela de edição:
-    // router.push("/(tabs)/edit-profile");
+  const initials = useMemo(() => {
+    const name = (profile.fullName ?? "").trim();
+    if (!name) return "U";
+    const parts = name.split(" ").filter(Boolean);
+    const a = parts[0]?.[0] ?? "U";
+    const b = parts.length > 1 ? parts[parts.length - 1][0] : "";
+    return (a + b).toUpperCase();
+  }, [profile.fullName]);
+
+  function goBack() {
+    router.replace(FRAME3_ROUTE);
   }
 
-  function onSecurity() {
-    // quando você criar a tela:
-    // router.push("/(tabs)/security");
+  function goEdit() {
+    router.push(EDIT_PROFILE_ROUTE);
   }
 
-  function onLogout() {
-    // quando conectar Firebase:
-    // await auth.signOut();
-    // router.replace("/(tabs)"); ou "/signin"
+  function goHistory() {
+    router.push(HISTORY_ROUTE);
+  }
+
+  async function onLogout() {
+    try {
+      await signOut(auth);
+      router.replace("/signin");
+    } catch (e) {
+      console.log("LOGOUT ERROR:", e);
+    }
   }
 
   return (
     <View style={styles.page}>
-      <View
-        style={[
-          styles.phoneFrame,
-          isWeb && { width: phoneW, height: phoneH, borderRadius: 26 },
-        ]}
-      >
-        <SafeAreaView style={styles.safe} edges={["top"]}>
-          {/* Header */}
-          <View style={styles.headerRow}>
-            <Text style={styles.headerTitle}>Profile</Text>
+      <Stack.Screen options={{ headerShown: false }} />
 
-            <Pressable onPress={onEdit} style={styles.editBtn} hitSlop={10}>
-              <Feather name="edit-2" size={18} color="#dce3ea" />
-            </Pressable>
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <View style={styles.centerWrap}>
+          <View
+            style={[
+              styles.card,
+              isWeb
+                ? { width: cardW, height: cardH, borderRadius: 22 }
+                : { width: "100%", height: "100%", borderRadius: 0 },
+            ]}
+          >
+            <ScrollView
+              contentContainerStyle={styles.scroll}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Header */}
+              <View style={styles.headerRow}>
+                {/* ✅ seta discreta (SEM círculo) */}
+                <Pressable onPress={goBack} hitSlop={12} style={styles.backBtn}>
+                  <Ionicons name="chevron-back" size={20} color="#fff" />
+                </Pressable>
+
+                <Text style={styles.headerTitle}>Profile</Text>
+
+                {/* lápis (mantém discreto) */}
+                <Pressable onPress={goEdit} hitSlop={12} style={styles.editBtn}>
+                  <Ionicons name="pencil" size={18} color="#fff" />
+                </Pressable>
+              </View>
+
+              {/* Card verde maior (foto + nome) */}
+              <View style={styles.greenCard}>
+                <View style={styles.avatarWrap}>
+                  {profile.photoUrl ? (
+                    <Image source={{ uri: profile.photoUrl }} style={styles.avatarImg} />
+                  ) : (
+                    <View style={styles.avatarFallback}>
+                      <Text style={styles.avatarText}>{initials}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.nameText} numberOfLines={1}>
+                    {loading ? "Loading..." : profile.fullName?.trim() || "Your name"}
+                  </Text>
+                </View>
+
+                {/* opcional: pequeno logo no canto do card, como no figma */}
+                <Image source={LOGO} style={styles.miniLogo} />
+              </View>
+
+              {/* Itens */}
+              <InfoItem
+                icon="call-outline"
+                title="Phone no."
+                value={profile.phone?.trim() || "—"}
+              />
+
+              <InfoItem
+                icon="mail-outline"
+                title="E-Mail"
+                value={profile.email?.trim() || "—"}
+              />
+
+              <ActionItem
+                icon="time-outline"
+                title="History"
+                onPress={goHistory}
+              />
+
+              <ActionItem
+                icon="log-out-outline"
+                title="Log Out"
+                onPress={onLogout}
+              />
+
+              <View style={{ height: 18 }} />
+            </ScrollView>
           </View>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
 
-          {/* Card verde */}
-          <View style={styles.profileCard}>
-            <View style={styles.avatarWrap}>
-              {user.photo ? (
-                <Image source={{ uri: user.photo }} style={styles.avatarImg} />
-              ) : (
-                <Text style={styles.avatarInitial}>
-                  {user.name?.[0]?.toUpperCase() ?? "U"}
-                </Text>
-              )}
-            </View>
+function InfoItem({
+  icon,
+  title,
+  value,
+}: {
+  icon: any;
+  title: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.itemRow}>
+      <View style={styles.itemIconBox}>
+        <Ionicons name={icon} size={18} color="#fff" />
+      </View>
 
-            <Text style={styles.profileName}>{user.name}</Text>
-          </View>
-
-          {/* Lista */}
-          <View style={styles.list}>
-            <RowItem
-              icon={<Feather name="phone" size={18} color="#e9eef3" />}
-              title="Phone no."
-              value={user.phone}
-              onPress={() => {}}
-            />
-
-            <RowItem
-              icon={<Feather name="mail" size={18} color="#e9eef3" />}
-              title="E-Email"
-              value={user.email}
-              onPress={() => {}}
-            />
-
-            <RowItem
-              icon={<Ionicons name="shield-checkmark-outline" size={20} color="#e9eef3" />}
-              title="Security"
-              onPress={onSecurity}
-            />
-
-            <RowItem
-              icon={<Feather name="log-out" size={18} color="#e9eef3" />}
-              title="Log Out"
-              onPress={onLogout}
-            />
-          </View>
-        </SafeAreaView>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.itemTitle}>{title}</Text>
+        <Text style={styles.itemValue}>{value}</Text>
       </View>
     </View>
   );
 }
 
-function RowItem({
+function ActionItem({
   icon,
   title,
-  value,
   onPress,
 }: {
-  icon: React.ReactNode;
+  icon: any;
   title: string;
-  value?: string;
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.row} onPress={onPress}>
-      <View style={styles.rowLeft}>
-        <View style={styles.rowIcon}>{icon}</View>
-
-        <View style={{ flex: 1 }}>
-          <Text style={styles.rowTitle}>{title}</Text>
-          {value ? <Text style={styles.rowValue}>{value}</Text> : null}
-        </View>
+    <Pressable onPress={onPress} style={styles.actionRow}>
+      <View style={styles.itemIconBox}>
+        <Ionicons name={icon} size={18} color="#fff" />
       </View>
 
-      {/* seta opcional (se quiser em todas) */}
-      {/* <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.35)" /> */}
+      <Text style={styles.actionTitle}>{title}</Text>
+
+      <Ionicons
+        name="chevron-forward"
+        size={18}
+        color="rgba(255,255,255,0.45)"
+      />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  page: {
+  page: { flex: 1, backgroundColor: "#0b0f12" },
+
+  centerWrap: {
     flex: 1,
-    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
+    padding: Platform.OS === "web" ? 16 : 0,
   },
-  phoneFrame: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#0b0f12",
+
+  // card principal igual padrão sign-in
+  card: {
+    backgroundColor: "#171A1F",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
     overflow: "hidden",
   },
-  safe: { flex: 1, paddingHorizontal: 18 },
+
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingTop: 16,
+    paddingBottom: 26,
+  },
 
   headerRow: {
-    marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 14,
   },
+
+  // ✅ seta discreta (sem bolinha)
+  backBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+  },
+
   headerTitle: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: "900",
   },
+
+  // lápis pode manter em círculo suave (como figma)
   editBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: "#151d23",
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+  },
+
+  // card verde grande
+  greenCard: {
+    backgroundColor: "#4AB625",
+    borderRadius: 18,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 18,
+    minHeight: 92,
+  },
+
+  avatarWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.20)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.30)",
     alignItems: "center",
     justifyContent: "center",
   },
+  avatarImg: { width: "100%", height: "100%", resizeMode: "cover" },
+  avatarFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
+  avatarText: { color: "#fff", fontWeight: "900", fontSize: 20 },
 
-  profileCard: {
-    marginTop: 18,
-    backgroundColor: "#39b54a",
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
+  nameText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 16,
+  },
+
+  miniLogo: {
+    width: 26,
+    height: 26,
+    resizeMode: "contain",
+    opacity: 0.95,
+  },
+
+  itemRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    paddingVertical: 12,
   },
-  avatarWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.25)",
+
+  itemIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
   },
-  avatarImg: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  avatarInitial: { color: "#fff", fontWeight: "900", fontSize: 18 },
 
-  profileName: {
+  itemTitle: {
     color: "#fff",
-    fontSize: 18,
     fontWeight: "900",
-    flex: 1,
+    fontSize: 13,
+    marginBottom: 3,
+  },
+  itemValue: {
+    color: "rgba(255,255,255,0.70)",
+    fontSize: 12,
+    lineHeight: 16,
   },
 
-  list: { marginTop: 24, gap: 18 },
-
-  row: {
+  actionRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 14,
   },
-  rowLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  rowIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: "#151d23",
-    alignItems: "center",
-    justifyContent: "center",
+  actionTitle: {
+    flex: 1,
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 13,
   },
-  rowTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
-  rowValue: { color: "rgba(255,255,255,0.6)", marginTop: 2, fontSize: 12 },
 });
