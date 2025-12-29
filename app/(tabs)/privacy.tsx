@@ -1,132 +1,147 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type Section = {
-  title: string;
-  content: string[];
-};
-
-const SECTIONS: Section[] = [
-  {
-    title: "Privacy Policy (Preview)",
-    content: [
-      "This is a UI placeholder policy screen for your app prototype.",
-      "When you go live, replace this text with your final legal/privacy content.",
-    ],
-  },
-  {
-    title: "What we may collect",
-    content: [
-      "Ingredients text you type to check allergens.",
-      "A photo of a meal/product (only if you choose to take or upload one).",
-      "Selected allergens (your preferences).",
-      "Basic app diagnostics (crashes/performance), if enabled.",
-    ],
-  },
-  {
-    title: "AI processing (future integration)",
-    content: [
-      "In future versions, your typed ingredients and (optionally) your photo may be sent to an AI service to identify potential allergens.",
-      "We’ll only send what is needed to generate the result.",
-      "You will be able to use the app without AI features if you prefer (optional).",
-    ],
-  },
-  {
-    title: "Sharing & third parties",
-    content: [
-      "We do not sell your personal data.",
-      "If AI is enabled, data may be processed by an external AI provider solely to generate the allergen-check response.",
-      "If you later add analytics or crash reporting, you should disclose providers here.",
-    ],
-  },
-  {
-    title: "Your choices & rights",
-    content: [
-      "You can clear app data by restarting the app (in this prototype) or via a future “Reset” button.",
-      "You can remove a photo before submitting a scan.",
-      "You can change your selected allergens at any time.",
-    ],
-  },
-  {
-    title: "Security",
-    content: [
-      "We aim to protect your data using standard security practices.",
-      "No system is 100% secure, but we work to reduce risks.",
-    ],
-  },
-  {
-    title: "Contact",
-    content: [
-      "Add your support email or website here when you publish.",
-      "Example: support@yourapp.com",
-    ],
-  },
-];
+const LOGO = require("../../assets/images/logo.jpeg");
+const CONTENT_MAX_W = 520;
 
 export default function PrivacyScreen() {
+  const [accepted, setAccepted] = useState(false);
+
+  const usageBullets = [
+    "Save your allergy and dietary restriction preferences.",
+    "Process your data to identify product compatibility.",
+    "Use your selected allergens to generate ingredient warnings.",
+    "Improve scan results and reduce false positives over time.",
+    "Store recent scan history locally (prototype behavior may reset on restart).",
+  ];
+
+  const securityBullets = [
+    "We apply standard security practices to protect stored information.",
+    "No system is completely secure — avoid submitting sensitive personal data.",
+    "If third-party services are enabled (AI/analytics), data may be processed only for the requested functionality.",
+    "You can remove a photo before submitting a scan and edit your preferences anytime.",
+  ];
+
+  function goToIndex() {
+    // ✅ normalmente abre a tab index dentro do Tabs
+    router.replace("/(tabs)");
+    // se seu index for fora do Tabs, troque por:
+    // router.replace("/");
+  }
+
+  function acceptAndContinue() {
+    if (!accepted) return;
+    router.replace("/(tabs)/frame3");
+  }
+
   return (
     <View style={styles.page}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.headerRow}>
-            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
-              <Text style={styles.backText}>‹</Text>
+            <Pressable onPress={goToIndex} style={styles.backBtn} hitSlop={10}>
+              <Ionicons name="chevron-back" size={22} color="#fff" />
+            </Pressable>
+            <View style={{ width: 42 }} />
+          </View>
+
+          {/* Centro */}
+          <View style={styles.centerWrap}>
+            <Image source={LOGO} style={styles.logo} />
+            <Text style={styles.brand}>AlerCheck</Text>
+
+            <Text style={styles.title}>Allergen Scanner Privacy Policy</Text>
+            <Text style={styles.subtitle}>
+              Take a moment to review our privacy policy to ensure a safe and confidential
+              experience with the Allergen Scanner.
+            </Text>
+          </View>
+
+          {/* ✅ UM ÚNICO CARD */}
+          <View style={styles.card}>
+            {/* Section 1 */}
+            <Text style={styles.cardTitle}>Data Collection and Usage</Text>
+            <Text style={styles.cardText}>
+              Target Allergen Scanner helps you shop smarter by using your allergen and dietary
+              preferences to provide tailored product scans, ingredient warnings, and personalized
+              suggestions—ensuring safer, more informed shopping decisions every time.
+            </Text>
+
+            <View style={styles.bullets}>
+              {usageBullets.map((t, i) => (
+                <View key={i} style={styles.bulletRow}>
+                  <View style={styles.dot} />
+                  <Text style={styles.bulletText}>{t}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            {/* Section 2 */}
+            <Text style={styles.cardTitle}>Data Security</Text>
+            <Text style={styles.cardText}>
+              Your privacy matters to us. We aim to protect your information and reduce
+              unauthorized access, so you can use our services with confidence and peace of mind.
+              In production, this policy should clearly explain retention, deletion, and any
+              external processors (AI/analytics).
+            </Text>
+
+            <View style={styles.bullets}>
+              {securityBullets.map((t, i) => (
+                <View key={i} style={styles.bulletRow}>
+                  <View style={styles.dot} />
+                  <Text style={styles.bulletText}>{t}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={[styles.cardText, { marginTop: 12 }]}>
+              If you have questions, add your official support contact here before going live
+              (for example, a support email address or website).
+            </Text>
+          </View>
+
+          {/* Espaço para não esconder pelo footer */}
+          <View style={{ height: 170 }} />
+        </ScrollView>
+
+        {/* Footer fixo */}
+        <View style={styles.footer}>
+          <View style={styles.footerInner}>
+            <Pressable
+              onPress={() => setAccepted((v) => !v)}
+              style={styles.agreeRow}
+              hitSlop={10}
+            >
+              <View style={[styles.checkbox, accepted && styles.checkboxOn]}>
+                {accepted ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+              </View>
+              <Text style={styles.agreeText}>I agree to the Privacy Policy</Text>
             </Pressable>
 
-            <Text style={styles.headerTitle}>Privacy</Text>
+            <View style={styles.buttonsRow}>
+              <Pressable style={[styles.btn, styles.btnCancel]} onPress={goToIndex}>
+                <Text style={styles.btnCancelText}>Cancel</Text>
+              </Pressable>
 
-            <View style={{ width: 40 }} />
-          </View>
-
-          {/* Card topo */}
-          <View style={styles.topCard}>
-            <View style={styles.cardTop}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="shield-checkmark-outline" size={18} color="#fff" />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>Privacy & Terms</Text>
-                <Text style={styles.cardSub}>
-                  Review how data is used in the prototype (and later with AI).
-                </Text>
-              </View>
+              <Pressable
+                style={[styles.btn, styles.btnPrimary, !accepted && styles.btnDisabled]}
+                onPress={acceptAndContinue}
+                disabled={!accepted}
+              >
+                <Text style={styles.btnPrimaryText}>Accept &amp; Continue</Text>
+              </Pressable>
             </View>
           </View>
-
-          {/* Texto completo (tudo na tela) */}
-          <View style={styles.sectionCard}>
-            {SECTIONS.map((section, sIndex) => (
-              <View key={sIndex} style={styles.sectionBlock}>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-
-                {section.content.map((p, idx) => (
-                  <View key={idx} style={styles.paragraphRow}>
-                    <Text style={styles.bullet}>•</Text>
-                    <Text style={styles.paragraph}>{p}</Text>
-                  </View>
-                ))}
-              </View>
-            ))}
-          </View>
-
-          {/* CTA */}
-          <Pressable style={styles.primaryBtn} onPress={() => router.replace("/(tabs)/frame3")}>
-            <Text style={styles.primaryBtnText}>Continue</Text>
-          </Pressable>
-
-          <Text style={styles.legal}>
-            Replace this text with your official Privacy Policy before publishing.
-          </Text>
-
-          <View style={{ height: 24 }} />
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -134,81 +149,152 @@ export default function PrivacyScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
-  scroll: { padding: 16, paddingBottom: 24 },
+  safe: { flex: 1 },
+
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    alignItems: "center",
+  },
 
   headerRow: {
+    width: "100%",
+    maxWidth: CONTENT_MAX_W,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
-  backText: { color: "#fff", fontSize: 28, marginTop: -2 },
-  headerTitle: { color: "#4AB625", fontSize: 16, fontWeight: "900" },
 
-  topCard: {
-    borderRadius: 18,
-    padding: 14,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    marginBottom: 12,
+  centerWrap: {
+    width: "100%",
+    maxWidth: CONTENT_MAX_W,
+    alignItems: "center",
+    paddingTop: 6,
+    paddingBottom: 10,
   },
-  cardTop: { flexDirection: "row", gap: 12, alignItems: "center" },
-  iconCircle: {
-    width: 38,
-    height: 38,
+  logo: {
+    width: 42,
+    height: 42,
     borderRadius: 12,
-    backgroundColor: "rgba(74,182,37,0.25)",
-    borderWidth: 1,
-    borderColor: "rgba(74,182,37,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
+    resizeMode: "cover",
+    marginBottom: 8,
   },
-  cardTitle: { color: "#fff", fontWeight: "900", fontSize: 14 },
-  cardSub: { color: "rgba(255,255,255,0.70)", fontSize: 11.5, marginTop: 4, lineHeight: 16 },
+  brand: { color: "#4AB625", fontWeight: "900", marginBottom: 8 },
 
-  sectionCard: {
+  title: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "900",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  subtitle: {
+    color: "rgba(255,255,255,0.68)",
+    fontSize: 11.5,
+    textAlign: "center",
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+
+  card: {
+    width: "100%",
+    maxWidth: CONTENT_MAX_W,
     borderRadius: 18,
     padding: 14,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
-    marginBottom: 14,
+    marginTop: 12,
+  },
+  cardTitle: { color: "#fff", fontWeight: "900", fontSize: 13, marginBottom: 8 },
+  cardText: { color: "rgba(255,255,255,0.75)", fontSize: 12, lineHeight: 18 },
+
+  bullets: { marginTop: 12, gap: 10 },
+  bulletRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+
+  // ✅ bullets neutros (cinza)
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.30)",
+    marginTop: 6,
+  },
+  bulletText: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 12,
+    lineHeight: 18,
+    flex: 1,
   },
 
-  sectionBlock: {
-    marginBottom: 14,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginVertical: 14,
   },
-  sectionTitle: { color: "#fff", fontWeight: "900", fontSize: 13, marginBottom: 10 },
 
-  paragraphRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
-  bullet: { color: "#4AB625", fontWeight: "900", marginTop: 1 },
-  paragraph: { color: "rgba(255,255,255,0.78)", fontSize: 12, lineHeight: 18, flex: 1 },
+  footer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 16,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  footerInner: {
+    width: "100%",
+    maxWidth: CONTENT_MAX_W,
+    gap: 10,
+  },
 
-  primaryBtn: {
-    backgroundColor: "#4AB625",
-    borderRadius: 14,
-    paddingVertical: 13,
+  agreeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 6,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryBtnText: { color: "#fff", fontSize: 14, fontWeight: "900" },
-
-  legal: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 10,
-    textAlign: "center",
-    marginTop: 10,
-    lineHeight: 14,
+  checkboxOn: {
+    backgroundColor: "rgba(74,182,37,0.45)",
+    borderColor: "rgba(74,182,37,0.85)",
   },
+  agreeText: { color: "rgba(255,255,255,0.82)", fontSize: 12, fontWeight: "800" },
+
+  buttonsRow: { flexDirection: "row", justifyContent: "center", gap: 12 },
+  btn: {
+    height: 46,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    minWidth: 180,
+  },
+  btnCancel: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+  },
+  btnCancelText: { color: "#fff", fontWeight: "900" },
+
+  btnPrimary: { backgroundColor: "#4AB625" },
+  btnPrimaryText: { color: "#fff", fontWeight: "900" },
+  btnDisabled: { opacity: 0.45 },
 });
