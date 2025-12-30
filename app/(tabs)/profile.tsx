@@ -19,7 +19,6 @@ import { auth, db } from "../../app/services/firebase";
 
 const LOGO = require("../../assets/images/logo.jpeg");
 
-
 const FRAME3_ROUTE = "/(tabs)/frame3";
 const HISTORY_ROUTE = "/(tabs)/history";
 const EDIT_PROFILE_ROUTE = "/(tabs)/editProfile";
@@ -32,14 +31,12 @@ type UserDoc = {
 };
 
 export default function ProfileScreen() {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // card responsivo no web (igual padrão sign-in/sign-up)
-  const MAX_W = 520;
-  const MAX_H = 920;
-  const cardW = isWeb ? Math.min(width - 32, MAX_W) : "100%";
-  const cardH = isWeb ? Math.min(height - 32, MAX_H) : "100%";
+  // ✅ mesmo “tamanho/shell” do Scan/History
+  const APP_MAX_W = 920;
+  const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
   const user = auth.currentUser;
 
@@ -125,103 +122,65 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <View style={styles.centerWrap}>
-          <View
-            style={[
-              styles.card,
-              isWeb
-                ? { width: cardW, height: cardH, borderRadius: 22 }
-                : { width: "100%", height: "100%", borderRadius: 0 },
-            ]}
-          >
-            <ScrollView
-              contentContainerStyle={styles.scroll}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Header */}
-              <View style={styles.headerRow}>
-                {/* ✅ seta discreta (SEM círculo) */}
-                <Pressable onPress={goBack} hitSlop={12} style={styles.backBtn}>
-                  <Ionicons name="chevron-back" size={20} color="#fff" />
-                </Pressable>
+      {/* ✅ shell igual Scan/History */}
+      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            {/* Header */}
+            <View style={styles.headerRow}>
+              {/* seta discreta (SEM círculo) */}
+              <Pressable onPress={goBack} hitSlop={12} style={styles.backBtn}>
+                <Ionicons name="chevron-back" size={20} color="#fff" />
+              </Pressable>
 
-                <Text style={styles.headerTitle}>Profile</Text>
+              <Text style={styles.headerTitle}>Profile</Text>
 
-                {/* lápis (mantém discreto) */}
-                <Pressable onPress={goEdit} hitSlop={12} style={styles.editBtn}>
-                  <Ionicons name="pencil" size={18} color="#fff" />
-                </Pressable>
+              {/* lápis */}
+              <Pressable onPress={goEdit} hitSlop={12} style={styles.editBtn}>
+                <Ionicons name="pencil" size={18} color="#fff" />
+              </Pressable>
+            </View>
+
+            {/* Card verde maior (foto + nome) */}
+            <View style={styles.greenCard}>
+              <View style={styles.avatarWrap}>
+                {profile.photoUrl ? (
+                  <Image source={{ uri: profile.photoUrl }} style={styles.avatarImg} />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarText}>{initials}</Text>
+                  </View>
+                )}
               </View>
 
-              {/* Card verde maior (foto + nome) */}
-              <View style={styles.greenCard}>
-                <View style={styles.avatarWrap}>
-                  {profile.photoUrl ? (
-                    <Image source={{ uri: profile.photoUrl }} style={styles.avatarImg} />
-                  ) : (
-                    <View style={styles.avatarFallback}>
-                      <Text style={styles.avatarText}>{initials}</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.nameText} numberOfLines={1}>
-                    {loading ? "Loading..." : profile.fullName?.trim() || "Your name"}
-                  </Text>
-                </View>
-
-                {/* opcional: pequeno logo no canto do card, como no figma */}
-                <Image source={LOGO} style={styles.miniLogo} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.nameText} numberOfLines={1}>
+                  {loading ? "Loading..." : profile.fullName?.trim() || "Your name"}
+                </Text>
               </View>
 
-              {/* Itens */}
-              <InfoItem
-                icon="call-outline"
-                title="Phone no."
-                value={profile.phone?.trim() || "—"}
-              />
+              <Image source={LOGO} style={styles.miniLogo} />
+            </View>
 
-              <InfoItem
-                icon="mail-outline"
-                title="E-Mail"
-                value={profile.email?.trim() || "—"}
-              />
+            {/* Itens */}
+            <InfoItem icon="call-outline" title="Phone no." value={profile.phone?.trim() || "—"} />
+            <InfoItem icon="mail-outline" title="E-Mail" value={profile.email?.trim() || "—"} />
 
-              <ActionItem
-                icon="time-outline"
-                title="History"
-                onPress={goHistory}
-              />
+            <ActionItem icon="time-outline" title="History" onPress={goHistory} />
+            <ActionItem icon="log-out-outline" title="Log Out" onPress={onLogout} />
 
-              <ActionItem
-                icon="log-out-outline"
-                title="Log Out"
-                onPress={onLogout}
-              />
-
-              <View style={{ height: 18 }} />
-            </ScrollView>
-          </View>
-        </View>
-      </SafeAreaView>
+            <View style={{ height: 18 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </View>
     </View>
   );
 }
 
-function InfoItem({
-  icon,
-  title,
-  value,
-}: {
-  icon: any;
-  title: string;
-  value: string;
-}) {
+function InfoItem({ icon, title, value }: { icon: any; title: string; value: string }) {
   return (
     <View style={styles.itemRow}>
       <View style={styles.itemIconBox}>
@@ -236,15 +195,7 @@ function InfoItem({
   );
 }
 
-function ActionItem({
-  icon,
-  title,
-  onPress,
-}: {
-  icon: any;
-  title: string;
-  onPress: () => void;
-}) {
+function ActionItem({ icon, title, onPress }: { icon: any; title: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={styles.actionRow}>
       <View style={styles.itemIconBox}>
@@ -253,11 +204,7 @@ function ActionItem({
 
       <Text style={styles.actionTitle}>{title}</Text>
 
-      <Ionicons
-        name="chevron-forward"
-        size={18}
-        color="rgba(255,255,255,0.45)"
-      />
+      <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.45)" />
     </Pressable>
   );
 }
@@ -265,21 +212,21 @@ function ActionItem({
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
 
-  centerWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Platform.OS === "web" ? 16 : 0,
-  },
+  // ✅ mesmo comportamento do Scan/History no web
+  pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // card principal igual padrão sign-in
-  card: {
-    backgroundColor: "#171A1F",
+  // ✅ shell/container do app
+  shell: { flex: 1, width: "100%", backgroundColor: "#171A1F" },
+  shellWeb: {
+    height: "100%",
+    borderRadius: 26,
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
-    overflow: "hidden",
+    backgroundColor: "#171A1F",
   },
 
+  // ✅ mesmo “miolo” do seu profile (padding padrão)
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 22,
@@ -294,19 +241,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // ✅ seta discreta (sem bolinha)
-  backBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 2,
-  },
+  // seta discreta (sem bolinha)
+  backBtn: { paddingVertical: 6, paddingHorizontal: 2 },
 
-  headerTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "900",
-  },
+  headerTitle: { color: "#fff", fontSize: 16, fontWeight: "900" },
 
-  // lápis pode manter em círculo suave (como figma)
+  // lápis
   editBtn: {
     width: 38,
     height: 38,
@@ -318,7 +258,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.10)",
   },
 
-  // card verde grande
+  // card verde
   greenCard: {
     backgroundColor: "#4AB625",
     borderRadius: 18,
@@ -345,18 +285,9 @@ const styles = StyleSheet.create({
   avatarFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
   avatarText: { color: "#fff", fontWeight: "900", fontSize: 20 },
 
-  nameText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 16,
-  },
+  nameText: { color: "#fff", fontWeight: "900", fontSize: 16 },
 
-  miniLogo: {
-    width: 26,
-    height: 26,
-    resizeMode: "contain",
-    opacity: 0.95,
-  },
+  miniLogo: { width: 26, height: 26, resizeMode: "contain", opacity: 0.95 },
 
   itemRow: {
     flexDirection: "row",
@@ -376,17 +307,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  itemTitle: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 13,
-    marginBottom: 3,
-  },
-  itemValue: {
-    color: "rgba(255,255,255,0.70)",
-    fontSize: 12,
-    lineHeight: 16,
-  },
+  itemTitle: { color: "#fff", fontWeight: "900", fontSize: 13, marginBottom: 3 },
+  itemValue: { color: "rgba(255,255,255,0.70)", fontSize: 12, lineHeight: 16 },
 
   actionRow: {
     flexDirection: "row",
@@ -394,10 +316,5 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 14,
   },
-  actionTitle: {
-    flex: 1,
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 13,
-  },
+  actionTitle: { flex: 1, color: "#fff", fontWeight: "900", fontSize: 13 },
 });

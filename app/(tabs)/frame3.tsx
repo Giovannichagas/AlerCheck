@@ -1,16 +1,18 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import React from "react";
 import {
   Image,
   ImageBackground,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const BG = require("../../assets/images/meanImage.jpeg");
 const LOGO = require("../../assets/images/logo.jpeg");
@@ -19,75 +21,82 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // ✅ Responsivo: o card não estica infinito no web
-  const CARD_MAX_W = 640;
-  const cardW = Math.max(280, Math.min(width - 36, CARD_MAX_W));
+  // ✅ mesmo “tamanho/shell” do Scan/History
+  const APP_MAX_W = 920;
+  const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
   return (
-    <View style={styles.page}>
-      <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
-        {/* Escurece a parte de baixo (igual seu mock) */}
-        <LinearGradient
-          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.92)"]}
-          style={StyleSheet.absoluteFillObject}
-        />
+    <View style={[styles.page, isWeb && styles.pageWeb]}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-        {/* Overlay para posicionar dots e card */}
-        <View style={styles.overlay}>
-          {/* Indicadores (bolinhas) */}
-          <View style={styles.dots}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-          </View>
+      {/* ✅ shell igual Scan/History */}
+      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+        <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
+          <LinearGradient
+            colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.92)"]}
+            style={StyleSheet.absoluteFillObject}
+          />
 
-          {/* Card inferior (mesmo layout, agora responsivo) */}
-          <View style={[styles.card, { width: cardW, alignSelf: "center" }]}>
-            <Image source={LOGO} style={styles.logo} />
-
-            <Text style={styles.welcome}>Bem-vindo(a) ao</Text>
-
-            <Text style={styles.title}>
-              Verificação de <Text style={styles.titleAccent}>alérgenos</Text>
-            </Text>
-
-            <Text style={styles.subtitle}>
-              Escaneie produtos instantaneamente para verificar a presença de
-              alérgenos e tomar decisões de compra mais conscientes.
-            </Text>
-
-            <View style={styles.list}>
-              <Feature text="Leitura rápida de código de barras" />
-              <Feature text="Detecção de Alérgenos" />
-              <Feature text="Preferências personalizadas" />
-              <Feature text="Rastreamento do histórico de varreduras" />
-            </View>
-
-            <Pressable
-              style={styles.primaryBtn}
-              onPress={() => {
-                router.push("/signin");
-              }}
+          <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+            {/* ✅ scroll para telas baixas (continua com card “em baixo”) */}
+            <ScrollView
+              contentContainerStyle={styles.scroll}
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.primaryBtnText}>Comece agora</Text>
-            </Pressable>
+              {/* Top (dots) */}
+              <View style={styles.topArea}>
+                <View style={styles.dots}>
+                  <View style={[styles.dot, styles.dotActive]} />
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
+                </View>
+              </View>
 
-            <Pressable
-              style={styles.secondaryBtn}
-              onPress={() => {
-                router.push("/signup");
-              }}
-            >
-              <Text style={styles.secondaryBtnText}>Create an Account</Text>
-            </Pressable>
+              {/* Card inferior (agora ocupa a largura do app como Scan/History) */}
+              <View style={styles.card}>
+                <Image source={LOGO} style={styles.logo} />
 
-            <Text style={styles.legal}>
-              Ao continuar, você concorda com nossos Termos de Serviço{"\n"}e
-              Política de Privacidade.
-            </Text>
-          </View>
-        </View>
-      </ImageBackground>
+                <Text style={styles.welcome}>Bem-vindo(a) ao</Text>
+
+                <Text style={styles.title}>
+                  Verificação de <Text style={styles.titleAccent}>alérgenos</Text>
+                </Text>
+
+                <Text style={styles.subtitle}>
+                  Escaneie produtos instantaneamente para verificar a presença de
+                  alérgenos e tomar decisões de compra mais conscientes.
+                </Text>
+
+                <View style={styles.list}>
+                  <Feature text="Leitura rápida de código de barras" />
+                  <Feature text="Detecção de Alérgenos" />
+                  <Feature text="Preferências personalizadas" />
+                  <Feature text="Rastreamento do histórico de varreduras" />
+                </View>
+
+                <Pressable
+                  style={styles.primaryBtn}
+                  onPress={() => router.push("/signin")}
+                >
+                  <Text style={styles.primaryBtnText}>Comece agora</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.secondaryBtn}
+                  onPress={() => router.push("/signup")}
+                >
+                  <Text style={styles.secondaryBtnText}>Create an Account</Text>
+                </Pressable>
+
+                <Text style={styles.legal}>
+                  Ao continuar, você concorda com nossos Termos de Serviço{"\n"}e
+                  Política de Privacidade.
+                </Text>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </ImageBackground>
+      </View>
     </View>
   );
 }
@@ -102,26 +111,38 @@ function Feature({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  // ✅ Agora o web usa tela inteira (igual as outras telas)
-  page: {
-    flex: 1,
+  page: { flex: 1, backgroundColor: "#0b0f12" },
+
+  // ✅ mesmo comportamento do Scan/History no web
+  pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
+
+  // ✅ shell/container do app
+  shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
+  shellWeb: {
+    height: "100%",
+    borderRadius: 26,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
     backgroundColor: "#0b0f12",
   },
 
-  bg: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
+  bg: { flex: 1, width: "100%", height: "100%" },
+
+  // ✅ mantém dots no topo e card em baixo; com scroll se precisar
+  scroll: {
+    flexGrow: 1,
+    padding: 16,
+    paddingBottom: 24,
+    justifyContent: "space-between",
   },
 
-  overlay: {
-    flex: 1,
+  topArea: {
+    alignItems: "center",
+    paddingTop: 6,
   },
 
   dots: {
-    position: "absolute",
-    top: 16,
-    alignSelf: "center",
     flexDirection: "row",
     gap: 8,
     opacity: 0.9,
@@ -138,15 +159,13 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
 
+  // ✅ card agora “stretch” igual Scan/History (nada de width 640 / position absolute)
   card: {
-    position: "absolute",
-    bottom: 22,
+    alignSelf: "stretch",
     backgroundColor: "#171A1F",
     borderRadius: 22,
     paddingVertical: 20,
     paddingHorizontal: 18,
-
-    // ✅ ajuda a ficar com “cara” das outras telas no web
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
   },
@@ -175,9 +194,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 8,
   },
-  titleAccent: {
-    color: "#4AB625",
-  },
+  titleAccent: { color: "#4AB625" },
 
   subtitle: {
     color: "rgba(255,255,255,0.85)",

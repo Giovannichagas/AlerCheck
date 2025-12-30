@@ -3,9 +3,11 @@ import { router, Stack } from "expo-router";
 import React from "react";
 import {
   ImageBackground,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,76 +15,86 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const BG = require("../../assets/images/frame1.jpeg");
 
 export default function HomeScreen() {
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === "web";
+
+  // ✅ mesmo “tamanho”/shell do Scan
+  const APP_MAX_W = 920;
+  const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
+
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
-          {/* Overlay para contraste */}
-          <LinearGradient
-            colors={[
-              "rgba(0,0,0,0.25)",
-              "rgba(0,0,0,0.35)",
-              "rgba(0,0,0,0.92)",
-            ]}
-            style={StyleSheet.absoluteFillObject}
-          />
+      {/* ✅ shell igual Scan/History */}
+      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+          <ImageBackground source={BG} style={styles.bg} resizeMode="cover">
+            {/* Overlay para contraste */}
+            <LinearGradient
+              colors={[
+                "rgba(0,0,0,0.25)",
+                "rgba(0,0,0,0.35)",
+                "rgba(0,0,0,0.92)",
+              ]}
+              style={StyleSheet.absoluteFillObject}
+            />
 
-          <View style={styles.scrollLike}>
-            {/* Top area (dots + título) */}
-            <View style={styles.topArea}>
-              <View style={styles.dots}>
-                <View style={[styles.dot, styles.dotActive]} />
-                <View style={styles.dot} />
-                <View style={styles.dot} />
+            <View style={styles.scrollLike}>
+              {/* Top area (dots + título) */}
+              <View style={styles.topArea}>
+                <View style={styles.dots}>
+                  <View style={[styles.dot, styles.dotActive]} />
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
+                </View>
+
+                <Text style={styles.heroTitle}>
+                  Allergens <Text style={styles.heroGreen}>check</Text>
+                </Text>
+
+                <Text style={styles.heroSub}>
+                  Scan products instantly to check for allergens{"\n"}
+                  and make informed shopping decisions.
+                </Text>
               </View>
 
-              <Text style={styles.heroTitle}>
-                Allergens <Text style={styles.heroGreen}>check</Text>
-              </Text>
+              {/* Card inferior */}
+              <View style={styles.card}>
+                <Text style={styles.welcome}>Welcome to</Text>
 
-              <Text style={styles.heroSub}>
-                Scan products instantly to check for allergens{"\n"}
-                and make informed shopping decisions.
-              </Text>
-            </View>
+                <Text style={styles.title}>
+                  Allergens <Text style={styles.titleGreen}>check</Text>
+                </Text>
 
-            {/* Card inferior (responsivo) */}
-            <View style={styles.card}>
-              <Text style={styles.welcome}>Welcome to</Text>
+                <Text style={styles.subtitle}>
+                  Scan products instantly to check for allergens{"\n"}
+                  and make informed shopping decisions.
+                </Text>
 
-              <Text style={styles.title}>
-                Allergens <Text style={styles.titleGreen}>check</Text>
-              </Text>
+                <View style={styles.list}>
+                  <Feature text="Quick Barcode Scanning" />
+                  <Feature text="Allergen Detection" />
+                  <Feature text="Personalized Preferences" />
+                  <Feature text="Scan History Tracking" />
+                </View>
 
-              <Text style={styles.subtitle}>
-                Scan products instantly to check for allergens{"\n"}
-                and make informed shopping decisions.
-              </Text>
+                <Pressable
+                  style={styles.primaryBtn}
+                  onPress={() => router.push("/privacy")}
+                >
+                  <Text style={styles.primaryBtnText}>Get Started</Text>
+                </Pressable>
 
-              <View style={styles.list}>
-                <Feature text="Quick Barcode Scanning" />
-                <Feature text="Allergen Detection" />
-                <Feature text="Personalized Preferences" />
-                <Feature text="Scan History Tracking" />
+                <Text style={styles.legal}>
+                  By continuing, you agree to our Terms of Service{"\n"}
+                  and Privacy Policy
+                </Text>
               </View>
-
-              <Pressable
-                style={styles.primaryBtn}
-                onPress={() => router.push("/privacy")}
-              >
-                <Text style={styles.primaryBtnText}>Get Started</Text>
-              </Pressable>
-
-              <Text style={styles.legal}>
-                By continuing, you agree to our Terms of Service{"\n"}
-                and Privacy Policy
-              </Text>
             </View>
-          </View>
-        </ImageBackground>
-      </SafeAreaView>
+          </ImageBackground>
+        </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -97,12 +109,25 @@ function Feature({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  // ✅ padrão igual Scan/History
   page: { flex: 1, backgroundColor: "#0b0f12" },
+
+  // ✅ mesmo comportamento do Scan no web
+  pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
+
+  // ✅ shell/container do app (igual Scan)
+  shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
+  shellWeb: {
+    height: "100%",
+    borderRadius: 26,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "#0b0f12",
+  },
 
   bg: { flex: 1, width: "100%", height: "100%" },
 
-  // ✅ container “tipo scroll” com padding (igual screens responsivas)
+  // ✅ container com padding igual padrão
   scrollLike: {
     flex: 1,
     padding: 16,
@@ -110,10 +135,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  topArea: {
-    paddingTop: 8,
-    alignItems: "center",
-  },
+  topArea: { paddingTop: 8, alignItems: "center" },
 
   dots: {
     flexDirection: "row",
@@ -127,9 +149,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.25)",
   },
-  dotActive: {
-    backgroundColor: "#4AB625",
-  },
+  dotActive: { backgroundColor: "#4AB625" },
 
   heroTitle: {
     color: "#fff",
@@ -148,7 +168,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  // ✅ card no estilo das outras telas
   card: {
     alignSelf: "stretch",
     backgroundColor: "rgba(11,15,18,0.82)",
@@ -184,16 +203,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  list: {
-    gap: 10,
-    marginBottom: 16,
-    paddingHorizontal: 8,
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  list: { gap: 10, marginBottom: 16, paddingHorizontal: 8 },
+  featureRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   check: {
     color: "#4AB625",
     fontSize: 18,
@@ -201,11 +212,7 @@ const styles = StyleSheet.create({
     width: 18,
     textAlign: "center",
   },
-  featureText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "800",
-  },
+  featureText: { color: "#fff", fontSize: 13, fontWeight: "800" },
 
   primaryBtn: {
     backgroundColor: "#4AB625",
@@ -215,11 +222,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 2,
   },
-  primaryBtnText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "900",
-  },
+  primaryBtnText: { color: "#fff", fontSize: 14, fontWeight: "900" },
 
   legal: {
     color: "rgba(255,255,255,0.55)",

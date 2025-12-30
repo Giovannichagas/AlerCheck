@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../app/services/firebase";
@@ -27,15 +28,18 @@ export default function SignInScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // ✅ Responsivo: container não estica infinito no web
+  // ✅ mesmo “tamanho/shell” do Scan/History
+  const APP_MAX_W = 920;
+  const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
+
+  // ✅ mantém o formulário legível (mas dentro do shell grande)
   const CONTENT_MAX_W = 520;
-  const contentW = Math.max(320, Math.min(width - 36, CONTENT_MAX_W));
+  const contentW = isWeb ? Math.min((shellW as number) - 32, CONTENT_MAX_W) : "100%";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 🔐 LOGIN
   const onSignIn = async () => {
     if (!email || !password) {
       Alert.alert("Erro", "Preencha email e senha");
@@ -51,11 +55,7 @@ export default function SignInScreen() {
         password
       );
 
-      console.log("USER LOGGED:", userCredential.user);
-
       Alert.alert("Bem-vindo!", userCredential.user.email || "");
-
-      // 👉 home = app/(tabs)/scan.tsx
       router.replace("/(tabs)/scan");
     } catch (error: any) {
       console.log("LOGIN ERROR:", error);
@@ -74,90 +74,94 @@ export default function SignInScreen() {
   };
 
   return (
-    <View style={styles.page}>
-      <KeyboardAvoidingView
-        style={{ flex: 1, width: "100%" }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ✅ Wrapper responsivo (não muda layout, só centraliza no web) */}
-          <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
-            {/* BACK */}
-            <View style={styles.topRow}>
-              <Pressable
-                onPress={() => router.replace("/(tabs)/frame3")}
-                style={styles.backBtn}
-              >
-                <Text style={styles.backText}>‹</Text>
-              </Pressable>
-            </View>
+    <View style={[styles.page, isWeb && styles.pageWeb]}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-            {/* LOGO */}
-            <View style={styles.header}>
-              <Image source={LOGO} style={styles.logo} />
-            </View>
-
-            <Text style={styles.title}>Faça login na sua conta</Text>
-
-            {/* FORM */}
-            <View style={styles.form}>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Email"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={styles.input}
-              />
-
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Senha"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                secureTextEntry
-                style={styles.input}
-              />
-
-              <Pressable onPress={onForgotPassword} style={styles.forgotWrap}>
-                <Text style={styles.forgot}>Esqueceu sua senha?</Text>
-              </Pressable>
-
-              {/* BOTTOM */}
-              <View style={styles.bottomArea}>
-                <Pressable
-                  style={[styles.primaryBtn, loading && { opacity: 0.6 }]}
-                  onPress={onSignIn}
-                  disabled={loading}
-                >
-                  <Text style={styles.primaryBtnText}>
-                    {loading ? "Entrando..." : "Entrar"}
-                  </Text>
-                </Pressable>
-
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>Entrar com</Text>
-                  <View style={styles.dividerLine} />
+      {/* ✅ shell igual Scan/History (borda discreta no web) */}
+      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+          <KeyboardAvoidingView
+            style={{ flex: 1, width: "100%" }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.scroll}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* ✅ conteúdo centralizado no web, sem “ficar pequeno” */}
+              <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
+                {/* BACK */}
+                <View style={styles.topRow}>
+                  <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
+                    <Text style={styles.backText}>‹</Text>
+                  </Pressable>
                 </View>
 
-                <View style={styles.socialRow}>
-                  <SocialIcon icon={ICON_GOOGLE} onPress={() => onSocial("Google")} />
-                  <SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
-                  <SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
+                {/* LOGO */}
+                <View style={styles.header}>
+                  <Image source={LOGO} style={styles.logo} />
+                </View>
+
+                <Text style={styles.title}>Faça login na sua conta</Text>
+
+                {/* FORM */}
+                <View style={styles.form}>
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Email"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    style={styles.input}
+                  />
+
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Senha"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    secureTextEntry
+                    style={styles.input}
+                  />
+
+                  <Pressable onPress={onForgotPassword} style={styles.forgotWrap}>
+                    <Text style={styles.forgot}>Esqueceu sua senha?</Text>
+                  </Pressable>
+
+                  {/* BOTTOM */}
+                  <View style={styles.bottomArea}>
+                    <Pressable
+                      style={[styles.primaryBtn, loading && { opacity: 0.6 }]}
+                      onPress={onSignIn}
+                      disabled={loading}
+                    >
+                      <Text style={styles.primaryBtnText}>
+                        {loading ? "Entrando..." : "Entrar"}
+                      </Text>
+                    </Pressable>
+
+                    <View style={styles.dividerRow}>
+                      <View style={styles.dividerLine} />
+                      <Text style={styles.dividerText}>Entrar com</Text>
+                      <View style={styles.dividerLine} />
+                    </View>
+
+                    <View style={styles.socialRow}>
+                      <SocialIcon icon={ICON_GOOGLE} onPress={() => onSocial("Google")} />
+                      <SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
+                      <SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
+                    </View>
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
 
-          <View style={{ height: 28 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+              <View style={{ height: 28 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -170,23 +174,33 @@ function SocialIcon({ icon, onPress }: { icon: any; onPress: () => void }) {
   );
 }
 
-// 🎨 STYLES
 const styles = StyleSheet.create({
-  // ✅ padrão igual às outras telas responsivas
-  page: {
-    flex: 1,
+  page: { flex: 1, backgroundColor: "#0b0f12" },
+
+  // ✅ igual Scan/History no web
+  pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
+
+  // ✅ shell igual Scan/History
+  shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
+  shellWeb: {
+    height: "100%",
+    borderRadius: 26,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
     backgroundColor: "#0b0f12",
   },
 
+  // ✅ padding padrão das telas
   scroll: {
     flexGrow: 1,
     padding: 16,
     paddingBottom: 24,
+    justifyContent: "center",
   },
 
-  // ✅ container interno (não altera layout, só limita largura no web)
+  // ✅ card do formulário (mantém seu design)
   contentWrap: {
-    flex: 1,
     backgroundColor: "#171A1F",
     borderRadius: 18,
     paddingHorizontal: 22,
@@ -194,6 +208,7 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
+    alignSelf: "stretch",
   },
 
   topRow: { height: 40, justifyContent: "center" },

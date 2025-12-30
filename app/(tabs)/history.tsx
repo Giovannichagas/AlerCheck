@@ -1,15 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, router, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-    FlatList,
-    Image,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  FlatList,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,12 +19,12 @@ const PLACEHOLDER = require("../../assets/images/logo.jpeg");
 type HistoryItem = {
   id: string;
   title: string;
-  type: string; // tipo do alimento (ex: Bakery, Dairy...)
+  type: string;
   ingredients: string;
   checkedAt: Date;
   hasAlert: boolean;
   matched?: string[];
-  photoUri?: string | null; // quando tiver integração real
+  photoUri?: string | null;
 };
 
 const now = Date.now();
@@ -57,33 +58,30 @@ function formatCheckedAt(date: Date) {
 }
 
 function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
 export default function HistoryScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
+  const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
+
+  // ✅ “container do app” (igual SignIn/Edit): mais largo que “celular”, mas sem esticar infinito
+  const APP_MAX_W = 920;
+  const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
   const [query, setQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [typeFilter, setTypeFilter] = useState<string>("All");
 
   const [hoverId, setHoverId] = useState<string | null>(null);
-
-  // ✅ item selecionado (mostra detalhes no topo)
   const [selected, setSelected] = useState<HistoryItem | null>(null);
 
-  // ✅ se veio do scanResult com id, seleciona automaticamente
   useEffect(() => {
     if (id) {
       const hit = MOCK_HISTORY.find((x) => x.id === id);
       if (hit) setSelected(hit);
     } else {
-      // opcional: deixar o mais recente selecionado por padrão
       setSelected((prev) => prev ?? MOCK_HISTORY[0] ?? null);
     }
   }, [id]);
@@ -127,7 +125,6 @@ export default function HistoryScreen() {
     setSelected(item);
   }
 
-  // Header fixo (detalhes + filtros)
   const Header = (
     <View>
       <View style={styles.headerRow}>
@@ -136,11 +133,9 @@ export default function HistoryScreen() {
         </Pressable>
 
         <Text style={styles.headerTitle}>History</Text>
-
         <View style={{ width: 40 }} />
       </View>
 
-      {/* stats */}
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>{stats.total}</Text>
@@ -156,7 +151,6 @@ export default function HistoryScreen() {
         </View>
       </View>
 
-      {/* filtros */}
       <View style={styles.filtersCard}>
         <Text style={styles.sectionTitle}>Filters</Text>
 
@@ -203,14 +197,12 @@ export default function HistoryScreen() {
         </Pressable>
       </View>
 
-      {/* ✅ DETALHES (sempre existe esse espaço) */}
       <View style={styles.detailsCard}>
         <Text style={styles.detailsHeader}>Selected record</Text>
 
         {selected ? (
           <>
             <View style={styles.detailsTop}>
-              {/* se tiver foto, mostra. se não tiver, mostra box sem foto */}
               {selected.photoUri ? (
                 <Image source={{ uri: selected.photoUri }} style={styles.detailsImg} />
               ) : (
@@ -252,94 +244,87 @@ export default function HistoryScreen() {
 
       <View style={styles.listHeaderRow}>
         <Text style={styles.listTitle}>All checks</Text>
-        <Text style={styles.listHint}>Click any row to update details • Hover highlights (web)</Text>
+        <Text style={styles.listHint} numberOfLines={2}>
+          Tap any row to update details • Hover highlights (web)
+        </Text>
       </View>
     </View>
   );
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={Header}
-          contentContainerStyle={styles.listContainer}
-          renderItem={({ item }) => {
-            const hovered = hoverId === item.id;
-            const isSelected = selected?.id === item.id;
+      {/* ✅ “Shell” igual SignIn/Edit: ocupa altura toda, largura limitada no web */}
+      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => item.id}
+            ListHeaderComponent={Header}
+            contentContainerStyle={styles.listContainer}
+            renderItem={({ item }) => {
+              const hovered = hoverId === item.id;
+              const isSelected = selected?.id === item.id;
 
-            return (
-              <Pressable
-                onPress={() => openDetails(item)}
-                onHoverIn={isWeb ? () => setHoverId(item.id) : undefined}
-                onHoverOut={isWeb ? () => setHoverId(null) : undefined}
-                style={({ pressed }) => [
-                  styles.row,
-                  hovered && styles.rowHover,
-                  pressed && { opacity: 0.92 },
-                  item.hasAlert && styles.rowAlertBorder,
-                  isSelected && styles.rowSelected,
-                ]}
-              >
-                <View style={styles.rowLeft}>
-                  <Image source={PLACEHOLDER} style={styles.rowIcon} />
-
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rowTitle} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-
-                    <Text style={styles.rowSub} numberOfLines={1}>
-                      {item.type} • {formatCheckedAt(item.checkedAt)}
-                    </Text>
-
-                    {item.hasAlert ? (
-                      <Text style={styles.rowMatched} numberOfLines={1}>
-                        Matched: {item.matched?.join(", ") || "Allergen detected"}
-                      </Text>
-                    ) : (
-                      <Text style={styles.rowOk} numberOfLines={1}>
-                        No alerts
-                      </Text>
-                    )}
-                  </View>
-                </View>
-
-                {/* seta (mesma ação: atualizar detalhes na mesma tela) */}
+              return (
                 <Pressable
-                  hitSlop={10}
                   onPress={() => openDetails(item)}
-                  style={[
-                    styles.arrowBtn,
-                    (hovered || isSelected) && styles.arrowBtnHover,
+                  onHoverIn={isWeb ? () => setHoverId(item.id) : undefined}
+                  onHoverOut={isWeb ? () => setHoverId(null) : undefined}
+                  style={({ pressed }) => [
+                    styles.row,
+                    hovered && styles.rowHover,
+                    pressed && { opacity: 0.92 },
+                    item.hasAlert && styles.rowAlertBorder,
+                    isSelected && styles.rowSelected,
                   ]}
                 >
-                  <Ionicons name="chevron-forward" size={18} color="#fff" />
+                  <View style={styles.rowLeft}>
+                    <Image source={PLACEHOLDER} style={styles.rowIcon} />
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+
+                      <Text style={styles.rowSub} numberOfLines={1}>
+                        {item.type} • {formatCheckedAt(item.checkedAt)}
+                      </Text>
+
+                      {item.hasAlert ? (
+                        <Text style={styles.rowMatched} numberOfLines={1}>
+                          Matched: {item.matched?.join(", ") || "Allergen detected"}
+                        </Text>
+                      ) : (
+                        <Text style={styles.rowOk} numberOfLines={1}>
+                          No alerts
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+
+                  <Pressable
+                    hitSlop={10}
+                    onPress={() => openDetails(item)}
+                    style={[styles.arrowBtn, (hovered || isSelected) && styles.arrowBtnHover]}
+                  >
+                    <Ionicons name="chevron-forward" size={18} color="#fff" />
+                  </Pressable>
                 </Pressable>
-              </Pressable>
-            );
-          }}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          ListFooterComponent={<View style={{ height: 30 }} />}
-          showsVerticalScrollIndicator={false}
-        />
-      </SafeAreaView>
+              );
+            }}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            ListFooterComponent={<View style={{ height: 30 }} />}
+            showsVerticalScrollIndicator={false}
+          />
+        </SafeAreaView>
+      </View>
     </View>
   );
 }
 
-function Chip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
+function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
@@ -348,16 +333,26 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
+  // ✅ fundo geral
   page: { flex: 1, backgroundColor: "#0b0f12" },
+  // ✅ no web, dá “respiro” e centraliza (igual telas Edit/SignIn)
+  pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
+
+  // ✅ “app shell”
+  shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
+  shellWeb: {
+    height: "100%",
+    borderRadius: 26,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "#0b0f12",
+  },
+
   listContainer: { padding: 16, paddingBottom: 24 },
 
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  backBtn: { width: 40, height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" }, // sem círculo
   backText: { color: "#fff", fontSize: 28, marginTop: -2 },
   headerTitle: { color: "#4AB625", fontSize: 16, fontWeight: "900" },
 
@@ -409,10 +404,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
   },
-  chipActive: {
-    backgroundColor: "rgba(74,182,37,0.20)",
-    borderColor: "rgba(74,182,37,0.35)",
-  },
+  chipActive: { backgroundColor: "rgba(74,182,37,0.20)", borderColor: "rgba(74,182,37,0.35)" },
   chipText: { color: "rgba(255,255,255,0.75)", fontWeight: "800", fontSize: 11.5 },
   chipTextActive: { color: "#fff" },
 
@@ -428,7 +420,6 @@ const styles = StyleSheet.create({
   },
   clearBtnText: { color: "#fff", fontWeight: "900", fontSize: 11.5 },
 
-  // ✅ detalhes
   detailsCard: {
     borderRadius: 14,
     padding: 14,
@@ -441,7 +432,6 @@ const styles = StyleSheet.create({
   detailsTop: { flexDirection: "row", gap: 12, alignItems: "center" },
 
   detailsImg: { width: 54, height: 54, borderRadius: 12, resizeMode: "cover" },
-
   noPhotoBox: {
     width: 54,
     height: 54,
@@ -466,22 +456,13 @@ const styles = StyleSheet.create({
   badgeSafe: { backgroundColor: "rgba(74,182,37,0.10)", borderColor: "rgba(74,182,37,0.30)" },
   badgeText: { color: "#fff", fontWeight: "900", fontSize: 11.5 },
 
-  emptySelected: {
-    paddingVertical: 6,
-  },
+  emptySelected: { paddingVertical: 6 },
   emptySelectedTitle: { color: "#fff", fontWeight: "900" },
   emptySelectedSub: { color: "rgba(255,255,255,0.55)", marginTop: 4, lineHeight: 16 },
 
-  // lista
-  listHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginTop: 2,
-    marginBottom: 10,
-  },
+  listHeaderRow: { marginTop: 2, marginBottom: 10 },
   listTitle: { color: "#fff", fontWeight: "900", fontSize: 13 },
-  listHint: { color: "rgba(255,255,255,0.45)", fontSize: 11 },
+  listHint: { color: "rgba(255,255,255,0.45)", fontSize: 11, marginTop: 4 },
 
   row: {
     paddingHorizontal: 12,

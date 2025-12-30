@@ -4,13 +4,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
-  View
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -38,13 +40,20 @@ type ScanParams = {
 export default function ScanScreen() {
   const { photoUri: photoUriParam } = useLocalSearchParams<ScanParams>();
 
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === "web";
+
+  // ✅ mesmo “tamanho”/shell do History
+  const APP_MAX_W = 920;
+  const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
+
   const [ingredients, setIngredients] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [allergens, setAllergens] = useState<Allergen[]>(INITIAL_ALLERGENS);
 
-  // ✅ reset do estado quando a tela monta (equivale ao “início” do app no seu cenário atual)
+  // ✅ reset do estado quando a tela monta
   useEffect(() => {
     setIngredients("");
     setPhotoUri(null);
@@ -73,10 +82,15 @@ export default function ScanScreen() {
 
   function handleSubmit() {
     const text = ingredients.trim();
-    const selectedAllergens = allergens.filter((a) => a.enabled).map((a) => a.label);
+    const selectedAllergens = allergens
+      .filter((a) => a.enabled)
+      .map((a) => a.label);
 
     if (!text && !photoUri) {
-      Alert.alert("Atenção", "Digite os ingredientes ou tire uma foto antes de enviar.");
+      Alert.alert(
+        "Atenção",
+        "Digite os ingredientes ou tire uma foto antes de enviar."
+      );
       return;
     }
 
@@ -93,120 +107,139 @@ export default function ScanScreen() {
   }
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* HEADER (mantive seu padrão de marca + ícones) */}
-          <View style={styles.headerRow}>
-            <View style={styles.brandRow}>
-              <View style={styles.brandBadge}>
-                <Text style={styles.brandBadgeText}>A</Text>
+      {/* ✅ shell igual History (centralizado no web, ocupa altura toda) */}
+      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* HEADER */}
+            <View style={styles.headerRow}>
+              <View style={styles.brandRow}>
+                <View style={styles.brandBadge}>
+                  <Text style={styles.brandBadgeText}>A</Text>
+                </View>
+                <Text style={styles.brandText}>AlerCheck</Text>
               </View>
-              <Text style={styles.brandText}>AlerCheck</Text>
-            </View>
 
-            <View style={styles.headerCenter}>
-              <Text style={styles.h1}>Target Allergen Scanner</Text>
-              <Text style={styles.sub}>Stay Safe by Scanning Products for Allergens</Text>
-            </View>
-
-            <View style={styles.headerIcons}>
-              <View style={styles.smallCircle}>
-                <Ionicons name="notifications-outline" size={16} color="#000" />
+              <View style={styles.headerCenter}>
+                <Text style={styles.h1}>Target Allergen Scanner</Text>
+                <Text style={styles.sub}>
+                  Stay Safe by Scanning Products for Allergens
+                </Text>
               </View>
-              <View style={styles.smallCircle}>
-                <Ionicons name="person-outline" size={16} color="#000" />
-              </View>
-            </View>
-          </View>
 
-          {/* ✅ SCAN A PRODUCT (voltei para o layout “original” verde e centralizado) */}
-          <View style={styles.scanCard}>
-            <View style={styles.scanIconWrap}>
-              <Ionicons name="camera-outline" size={22} color="#fff" />
-            </View>
-
-            <Text style={styles.scanTitle}>Scan a Product</Text>
-            <Text style={styles.scanHint}>Point camera at barcode</Text>
-
-            <Pressable style={styles.scanBtn} onPress={() => router.push("/(tabs)/camera")}>
-              <Ionicons name="camera-outline" size={16} color="#4AB625" />
-              <Text style={styles.scanBtnText}>Start Scanning</Text>
-            </Pressable>
-
-            {/* Preview da foto */}
-            {photoUri ? (
-              <View style={styles.photoPreviewBox}>
-                <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.photoLabel}>Photo added</Text>
-                  <Pressable onPress={() => setPhotoUri(null)} hitSlop={10}>
-                    <Text style={styles.photoRemove}>Remove photo</Text>
-                  </Pressable>
+              <View style={styles.headerIcons}>
+                <View style={styles.smallCircle}>
+                  <Ionicons
+                    name="notifications-outline"
+                    size={16}
+                    color="#000"
+                  />
+                </View>
+                <View style={styles.smallCircle}>
+                  <Ionicons name="person-outline" size={16} color="#000" />
                 </View>
               </View>
-            ) : null}
-          </View>
-
-          {/* INGREDIENTS */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Describe ingredients (for AI)</Text>
-            <TextInput
-              value={ingredients}
-              onChangeText={setIngredients}
-              placeholder="Type ingredients here (e.g., peanuts, milk, soy...)"
-              placeholderTextColor="rgba(255,255,255,0.45)"
-              style={styles.textArea}
-              multiline
-              textAlignVertical="top"
-            />
-
-            <Pressable style={styles.submitBtn} onPress={handleSubmit}>
-              <Text style={styles.submitBtnText}>Submit</Text>
-            </Pressable>
-          </View>
-
-          {/* ALLERGENS */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Allergens</Text>
-            <Text style={styles.help}>
-              Select the allergens you want to be alerted about when scanning products.
-            </Text>
-
-            <View style={styles.searchBox}>
-              <Feather name="search" size={16} color="rgba(255,255,255,0.6)" />
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search for allergens"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                style={styles.searchInput}
-              />
-              {search.length > 0 && (
-                <Pressable onPress={() => setSearch("")} hitSlop={10}>
-                  <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.35)" />
-                </Pressable>
-              )}
             </View>
 
-            {filtered.map((a) => (
-              <AllergenItem
-                key={a.id}
-                label={a.label}
-                enabled={a.enabled}
-                onToggle={() => toggleAllergen(a.id)}
-              />
-            ))}
-          </View>
+            {/* SCAN CARD */}
+            <View style={styles.scanCard}>
+              <View style={styles.scanIconWrap}>
+                <Ionicons name="camera-outline" size={22} color="#fff" />
+              </View>
 
-          <View style={{ height: 20 }} />
-        </ScrollView>
-      </SafeAreaView>
+              <Text style={styles.scanTitle}>Scan a Product</Text>
+              <Text style={styles.scanHint}>Point camera at barcode</Text>
+
+              <Pressable
+                style={styles.scanBtn}
+                onPress={() => router.push("/(tabs)/camera")}
+              >
+                <Ionicons name="camera-outline" size={16} color="#4AB625" />
+                <Text style={styles.scanBtnText}>Start Scanning</Text>
+              </Pressable>
+
+              {photoUri ? (
+                <View style={styles.photoPreviewBox}>
+                  <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.photoLabel}>Photo added</Text>
+                    <Pressable onPress={() => setPhotoUri(null)} hitSlop={10}>
+                      <Text style={styles.photoRemove}>Remove photo</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+
+            {/* INGREDIENTS */}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Describe ingredients (for AI)</Text>
+              <TextInput
+                value={ingredients}
+                onChangeText={setIngredients}
+                placeholder="Type ingredients here (e.g., peanuts, milk, soy...)"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                style={styles.textArea}
+                multiline
+                textAlignVertical="top"
+              />
+
+              <Pressable style={styles.submitBtn} onPress={handleSubmit}>
+                <Text style={styles.submitBtnText}>Submit</Text>
+              </Pressable>
+            </View>
+
+            {/* ALLERGENS */}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Allergens</Text>
+              <Text style={styles.help}>
+                Select the allergens you want to be alerted about when scanning products.
+              </Text>
+
+              <View style={styles.searchBox}>
+                <Feather
+                  name="search"
+                  size={16}
+                  color="rgba(255,255,255,0.6)"
+                />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Search for allergens"
+                  placeholderTextColor="rgba(255,255,255,0.45)"
+                  style={styles.searchInput}
+                />
+                {search.length > 0 && (
+                  <Pressable onPress={() => setSearch("")} hitSlop={10}>
+                    <Ionicons
+                      name="close-circle"
+                      size={18}
+                      color="rgba(255,255,255,0.35)"
+                    />
+                  </Pressable>
+                )}
+              </View>
+
+              {filtered.map((a) => (
+                <AllergenItem
+                  key={a.id}
+                  label={a.label}
+                  enabled={a.enabled}
+                  onToggle={() => toggleAllergen(a.id)}
+                />
+              ))}
+            </View>
+
+            <View style={{ height: 20 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -241,11 +274,24 @@ function AllergenItem({
 }
 
 const styles = StyleSheet.create({
-  // ✅ igual History
   page: { flex: 1, backgroundColor: "#0b0f12" },
 
-  // ✅ igual History: padding 16 e FULL WIDTH (sem maxWidth / sem centralizar)
-  scroll: { padding: 16, paddingBottom: 24, width: "100%" },
+  // ✅ mesmo comportamento do History no web
+  pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
+
+  // ✅ shell/container do app
+  shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
+  shellWeb: {
+    height: "100%",
+    borderRadius: 26,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "#0b0f12",
+  },
+
+  // ✅ mantém responsivo e com padding padrão
+  scroll: { padding: 16, paddingBottom: 24 },
 
   headerRow: {
     flexDirection: "row",
@@ -287,7 +333,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // ✅ Scan a Product (verde grande, como antes) – e agora “stretch” para ocupar a largura
   scanCard: {
     alignSelf: "stretch",
     backgroundColor: "#4AB625",
@@ -342,7 +387,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ✅ cards igual History
   card: {
     alignSelf: "stretch",
     borderRadius: 14,

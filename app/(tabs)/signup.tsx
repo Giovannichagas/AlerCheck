@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -13,9 +13,10 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../app/services/firebase"; // Firebase config
+import { auth } from "../../app/services/firebase";
 
 const LOGO = require("../../assets/images/logo.jpeg");
 const ICON_GOOGLE = require("../../assets/images/google.jpg");
@@ -26,9 +27,13 @@ export default function SignUpScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // ✅ Responsivo: não estica infinito no web
+  // ✅ mesmo “tamanho/shell” do Scan/History
+  const APP_MAX_W = 920;
+  const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
+
+  // ✅ mantém o formulário legível dentro do shell
   const CONTENT_MAX_W = 520;
-  const contentW = Math.max(320, Math.min(width - 36, CONTENT_MAX_W));
+  const contentW = isWeb ? Math.min((shellW as number) - 32, CONTENT_MAX_W) : "100%";
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -49,8 +54,11 @@ export default function SignUpScreen() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       const user = userCredential.user;
+
       Alert.alert("Conta criada!", `Bem-vindo ${user.email}`);
-      router.push("../app/(tabs)/index"); // ✅ mantém sua rota
+
+      // ✅ mantém sua rota
+      router.push("../app/(tabs)/index");
     } catch (error: any) {
       Alert.alert("Erro ao criar conta", error.message);
     }
@@ -61,93 +69,100 @@ export default function SignUpScreen() {
   };
 
   return (
-    <View style={styles.page}>
-      <KeyboardAvoidingView
-        style={{ flex: 1, width: "100%" }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ✅ Wrapper responsivo (mantém layout; só limita largura no web) */}
-          <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
-            <View style={styles.topRow}>
-              <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
-                <Text style={styles.backText}>‹</Text>
-              </Pressable>
-            </View>
+    <View style={[styles.page, isWeb && styles.pageWeb]}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-            <View style={styles.header}>
-              <Image source={LOGO} style={styles.logo} />
-              <Text style={styles.screenTitle}>Sign Up</Text>
-            </View>
-
-            <View style={styles.form}>
-              <TextInput
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="First Name"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                style={styles.input}
-              />
-              <TextInput
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Last Name"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                style={styles.input}
-              />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Email ID"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={styles.input}
-              />
-              <TextInput
-                value={pass}
-                onChangeText={setPass}
-                placeholder="Password"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                secureTextEntry
-                style={styles.input}
-              />
-              <TextInput
-                value={confirm}
-                onChangeText={setConfirm}
-                placeholder="Confirm Password"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                secureTextEntry
-                style={styles.input}
-              />
-
-              <View style={styles.bottomArea}>
-                <Pressable style={styles.primaryBtn} onPress={onCreateAccount}>
-                  <Text style={styles.primaryBtnText}>Create Account</Text>
-                </Pressable>
-
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>Sign in with</Text>
-                  <View style={styles.dividerLine} />
+      {/* ✅ shell igual Scan/History (borda discreta no web) */}
+      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+          <KeyboardAvoidingView
+            style={{ flex: 1, width: "100%" }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
+            <ScrollView
+              contentContainerStyle={styles.scroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* ✅ formulário centralizado no web */}
+              <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
+                <View style={styles.topRow}>
+                  <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
+                    <Text style={styles.backText}>‹</Text>
+                  </Pressable>
                 </View>
 
-                <View style={styles.socialRow}>
-                  <SocialIcon icon={ICON_GOOGLE} onPress={() => onSocial("Google")} />
-                  <SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
-                  <SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
+                <View style={styles.header}>
+                  <Image source={LOGO} style={styles.logo} />
+                  <Text style={styles.screenTitle}>Sign Up</Text>
+                </View>
+
+                <View style={styles.form}>
+                  <TextInput
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder="First Name"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    style={styles.input}
+                  />
+                  <TextInput
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholder="Last Name"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    style={styles.input}
+                  />
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Email ID"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    style={styles.input}
+                  />
+                  <TextInput
+                    value={pass}
+                    onChangeText={setPass}
+                    placeholder="Password"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    secureTextEntry
+                    style={styles.input}
+                  />
+                  <TextInput
+                    value={confirm}
+                    onChangeText={setConfirm}
+                    placeholder="Confirm Password"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    secureTextEntry
+                    style={styles.input}
+                  />
+
+                  <View style={styles.bottomArea}>
+                    <Pressable style={styles.primaryBtn} onPress={onCreateAccount}>
+                      <Text style={styles.primaryBtnText}>Create Account</Text>
+                    </Pressable>
+
+                    <View style={styles.dividerRow}>
+                      <View style={styles.dividerLine} />
+                      <Text style={styles.dividerText}>Sign in with</Text>
+                      <View style={styles.dividerLine} />
+                    </View>
+
+                    <View style={styles.socialRow}>
+                      <SocialIcon icon={ICON_GOOGLE} onPress={() => onSocial("Google")} />
+                      <SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
+                      <SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
+                    </View>
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
 
-          <View style={{ height: 28 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+              <View style={{ height: 28 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -161,12 +176,26 @@ function SocialIcon({ icon, onPress }: { icon: any; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  // ✅ padrão igual às telas responsivas
   page: { flex: 1, backgroundColor: "#0b0f12" },
 
-  scroll: { flexGrow: 1, padding: 16, paddingBottom: 24 },
+  // ✅ igual Scan/History no web
+  pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // ✅ container interno: mantém layout, só limita largura no web
+  // ✅ shell igual Scan/History
+  shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
+  shellWeb: {
+    height: "100%",
+    borderRadius: 26,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "#0b0f12",
+  },
+
+  // ✅ padding padrão
+  scroll: { flexGrow: 1, padding: 16, paddingBottom: 24, justifyContent: "center" },
+
+  // ✅ seu card interno (mantido)
   contentWrap: {
     flex: 1,
     backgroundColor: "#171A1F",
@@ -176,6 +205,7 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
+    alignSelf: "stretch",
   },
 
   topRow: { height: 40, justifyContent: "center" },

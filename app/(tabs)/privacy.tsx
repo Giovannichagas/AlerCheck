@@ -1,13 +1,28 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
 import React, { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const LOGO = require("../../assets/images/logo.jpeg");
-const CONTENT_MAX_W = 520;
 
 export default function PrivacyScreen() {
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === "web";
+
+  // ✅ mesmo “tamanho/shell” do Scan/History
+  const APP_MAX_W = 920;
+  const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
+
   const [accepted, setAccepted] = useState(false);
 
   const usageBullets = [
@@ -26,10 +41,9 @@ export default function PrivacyScreen() {
   ];
 
   function goToIndex() {
-    // ✅ normalmente abre a tab index dentro do Tabs
     router.replace("/(tabs)");
-    // se seu index for fora do Tabs, troque por:
-    // router.replace("/");
+    // se preferir index explícito:
+    // router.replace("/(tabs)/index");
   }
 
   function acceptAndContinue() {
@@ -38,145 +52,156 @@ export default function PrivacyScreen() {
   }
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={styles.safe} edges={["top"]}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View style={styles.headerRow}>
-            <Pressable onPress={goToIndex} style={styles.backBtn} hitSlop={10}>
-              <Ionicons name="chevron-back" size={22} color="#fff" />
-            </Pressable>
-            <View style={{ width: 42 }} />
-          </View>
-
-          {/* Centro */}
-          <View style={styles.centerWrap}>
-            <Image source={LOGO} style={styles.logo} />
-            <Text style={styles.brand}>AlerCheck</Text>
-
-            <Text style={styles.title}>Allergen Scanner Privacy Policy</Text>
-            <Text style={styles.subtitle}>
-              Take a moment to review our privacy policy to ensure a safe and confidential
-              experience with the Allergen Scanner.
-            </Text>
-          </View>
-
-          {/* ✅ UM ÚNICO CARD */}
-          <View style={styles.card}>
-            {/* Section 1 */}
-            <Text style={styles.cardTitle}>Data Collection and Usage</Text>
-            <Text style={styles.cardText}>
-              Target Allergen Scanner helps you shop smarter by using your allergen and dietary
-              preferences to provide tailored product scans, ingredient warnings, and personalized
-              suggestions—ensuring safer, more informed shopping decisions every time.
-            </Text>
-
-            <View style={styles.bullets}>
-              {usageBullets.map((t, i) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={styles.dot} />
-                  <Text style={styles.bulletText}>{t}</Text>
-                </View>
-              ))}
+      {/* ✅ shell igual Scan/History */}
+      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header */}
+            <View style={styles.headerRow}>
+              {/* ✅ seta discreta (sem círculo) */}
+              <Pressable onPress={goToIndex} style={styles.backBtn} hitSlop={10}>
+                <Ionicons name="chevron-back" size={22} color="#fff" />
+              </Pressable>
+              <View style={{ width: 40 }} />
             </View>
 
-            {/* Divider */}
-            <View style={styles.divider} />
+            {/* Centro */}
+            <View style={styles.centerWrap}>
+              <Image source={LOGO} style={styles.logo} />
+              <Text style={styles.brand}>AlerCheck</Text>
 
-            {/* Section 2 */}
-            <Text style={styles.cardTitle}>Data Security</Text>
-            <Text style={styles.cardText}>
-              Your privacy matters to us. We aim to protect your information and reduce
-              unauthorized access, so you can use our services with confidence and peace of mind.
-              In production, this policy should clearly explain retention, deletion, and any
-              external processors (AI/analytics).
-            </Text>
-
-            <View style={styles.bullets}>
-              {securityBullets.map((t, i) => (
-                <View key={i} style={styles.bulletRow}>
-                  <View style={styles.dot} />
-                  <Text style={styles.bulletText}>{t}</Text>
-                </View>
-              ))}
+              <Text style={styles.title}>Allergen Scanner Privacy Policy</Text>
+              <Text style={styles.subtitle}>
+                Take a moment to review our privacy policy to ensure a safe and confidential
+                experience with the Allergen Scanner.
+              </Text>
             </View>
 
-            <Text style={[styles.cardText, { marginTop: 12 }]}>
-              If you have questions, add your official support contact here before going live
-              (for example, a support email address or website).
-            </Text>
-          </View>
+            {/* ✅ UM ÚNICO CARD (agora ocupa o shell, igual Scan/History) */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Data Collection and Usage</Text>
+              <Text style={styles.cardText}>
+                Target Allergen Scanner helps you shop smarter by using your allergen and dietary
+                preferences to provide tailored product scans, ingredient warnings, and personalized
+                suggestions—ensuring safer, more informed shopping decisions every time.
+              </Text>
 
-          {/* Espaço para não esconder pelo footer */}
-          <View style={{ height: 170 }} />
-        </ScrollView>
-
-        {/* Footer fixo */}
-        <View style={styles.footer}>
-          <View style={styles.footerInner}>
-            <Pressable
-              onPress={() => setAccepted((v) => !v)}
-              style={styles.agreeRow}
-              hitSlop={10}
-            >
-              <View style={[styles.checkbox, accepted && styles.checkboxOn]}>
-                {accepted ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+              <View style={styles.bullets}>
+                {usageBullets.map((t, i) => (
+                  <View key={i} style={styles.bulletRow}>
+                    <View style={styles.dot} />
+                    <Text style={styles.bulletText}>{t}</Text>
+                  </View>
+                ))}
               </View>
-              <Text style={styles.agreeText}>I agree to the Privacy Policy</Text>
-            </Pressable>
 
-            <View style={styles.buttonsRow}>
-              <Pressable style={[styles.btn, styles.btnCancel]} onPress={goToIndex}>
-                <Text style={styles.btnCancelText}>Cancel</Text>
-              </Pressable>
+              <View style={styles.divider} />
 
+              <Text style={styles.cardTitle}>Data Security</Text>
+              <Text style={styles.cardText}>
+                Your privacy matters to us. We aim to protect your information and reduce
+                unauthorized access, so you can use our services with confidence and peace of mind.
+                In production, this policy should clearly explain retention, deletion, and any
+                external processors (AI/analytics).
+              </Text>
+
+              <View style={styles.bullets}>
+                {securityBullets.map((t, i) => (
+                  <View key={i} style={styles.bulletRow}>
+                    <View style={styles.dot} />
+                    <Text style={styles.bulletText}>{t}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <Text style={[styles.cardText, { marginTop: 12 }]}>
+                If you have questions, add your official support contact here before going live
+                (for example, a support email address or website).
+              </Text>
+            </View>
+
+            {/* Espaço para não esconder atrás do footer fixo */}
+            <View style={{ height: 190 }} />
+          </ScrollView>
+
+          {/* Footer fixo (dentro do shell) */}
+          <View style={styles.footer}>
+            <View style={styles.footerInner}>
               <Pressable
-                style={[styles.btn, styles.btnPrimary, !accepted && styles.btnDisabled]}
-                onPress={acceptAndContinue}
-                disabled={!accepted}
+                onPress={() => setAccepted((v) => !v)}
+                style={styles.agreeRow}
+                hitSlop={10}
               >
-                <Text style={styles.btnPrimaryText}>Accept &amp; Continue</Text>
+                <View style={[styles.checkbox, accepted && styles.checkboxOn]}>
+                  {accepted ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+                </View>
+                <Text style={styles.agreeText}>I agree to the Privacy Policy</Text>
               </Pressable>
+
+              <View style={styles.buttonsRow}>
+                <Pressable style={[styles.btn, styles.btnCancel]} onPress={goToIndex}>
+                  <Text style={styles.btnCancelText}>Cancel</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.btn, styles.btnPrimary, !accepted && styles.btnDisabled]}
+                  onPress={acceptAndContinue}
+                  disabled={!accepted}
+                >
+                  <Text style={styles.btnPrimaryText}>Accept &amp; Continue</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
-  safe: { flex: 1 },
 
-  scroll: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    alignItems: "center",
+  // ✅ mesmo comportamento do Scan/History no web
+  pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
+
+  // ✅ shell/container do app
+  shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
+  shellWeb: {
+    height: "100%",
+    borderRadius: 26,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "#0b0f12",
   },
 
+  // ✅ padding padrão
+  scroll: { padding: 16, paddingBottom: 24 },
+
   headerRow: {
-    width: "100%",
-    maxWidth: CONTENT_MAX_W,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 6,
   },
+
+  // ✅ seta discreta (sem bolinha)
   backBtn: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
   },
 
   centerWrap: {
-    width: "100%",
-    maxWidth: CONTENT_MAX_W,
     alignItems: "center",
     paddingTop: 6,
     paddingBottom: 10,
@@ -206,8 +231,7 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    width: "100%",
-    maxWidth: CONTENT_MAX_W,
+    alignSelf: "stretch",
     borderRadius: 18,
     padding: 14,
     backgroundColor: "rgba(255,255,255,0.06)",
@@ -248,11 +272,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 16,
     paddingHorizontal: 16,
-    alignItems: "center",
   },
   footerInner: {
     width: "100%",
-    maxWidth: CONTENT_MAX_W,
     gap: 10,
   },
 
@@ -278,14 +300,16 @@ const styles = StyleSheet.create({
   },
   agreeText: { color: "rgba(255,255,255,0.82)", fontSize: 12, fontWeight: "800" },
 
-  buttonsRow: { flexDirection: "row", justifyContent: "center", gap: 12 },
+  // ✅ botões mais responsivos
+  buttonsRow: { flexDirection: "row", gap: 12 },
   btn: {
     height: 46,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 18,
-    minWidth: 180,
+    paddingHorizontal: 14,
+    flex: 1,
+    minWidth: 0,
   },
   btnCancel: {
     backgroundColor: "rgba(255,255,255,0.08)",
