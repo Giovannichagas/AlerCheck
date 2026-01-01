@@ -1,5 +1,5 @@
 import { router, Stack } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -15,7 +15,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  getRedirectResult,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  updateProfile,
+} from "firebase/auth";
 import { auth } from "../../app/services/firebase";
 
 const LOGO = require("../../assets/images/logo.jpeg");
@@ -40,6 +47,21 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // ✅ captura retorno do redirect (quando popup é bloqueado)
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          Alert.alert("Bem-vindo!", result.user.email || "");
+          router.replace("/(tabs)/frame3");
+        }
+      })
+      .catch((e) => console.log("Redirect error:", e));
+  }, []);
 
   const onCreateAccount = async () => {
     if (!firstName || !lastName || !email || !pass || !confirm) {
@@ -52,19 +74,102 @@ export default function SignUpScreen() {
     }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      const user = userCredential.user;
+      setLoading(true);
 
-      Alert.alert("Conta criada!", `Bem-vindo ${user.email}`);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        pass
+      );
 
-      // ✅ mantém sua rota
-      router.push("../app/(tabs)/index");
+      // ✅ opcional: salvar nome no perfil do Firebase Auth
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      if (auth.currentUser && fullName) {
+        await updateProfile(auth.currentUser, { displayName: fullName });
+      }
+
+      Alert.alert("Conta criada!", `Bem-vindo ${userCredential.user.email ?? ""}`);
+      router.replace("/(tabs)/frame3");
     } catch (error: any) {
+      console.log("SIGNUP ERROR:", error);
+
+      const code = error?.code;
+      if (code === "auth/email-already-in-use") {
+        Alert.alert("Erro", "Esse email já está em uso.");
+        return;
+      }
+      if (code === "auth/invalid-email") {
+        Alert.alert("Erro", "Email inválido.");
+        return;
+      }
+      if (code === "auth/weak-password") {
+        Alert.alert("Erro", "Senha fraca. Use pelo menos 6 caracteres.");
+        return;
+      }
+
       Alert.alert("Erro ao criar conta", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onGoogleSignUp = async () => {
+    try {
+      setLoading(true);
+
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      // ✅ Expo Web: popup é o melhor
+      if (Platform.OS === "web") {
+        try {
+          const result = await signInWithPopup(auth, provider);
+          Alert.alert("Bem-vindo!", result.user.email || "");
+          router.replace("/(tabs)/frame3");
+        } catch (e: any) {
+          // Se popup for bloqueado/fechado, cai para redirect
+          if (e?.code === "auth/popup-blocked" || e?.code === "auth/popup-closed-by-user") {
+            await signInWithRedirect(auth, provider);
+            return; // retorno será capturado no useEffect
+          }
+          throw e;
+        }
+        return;
+      }
+
+      Alert.alert(
+        "Info",
+        "No mobile vamos configurar Google depois (expo-auth-session / google-signin)."
+      );
+    } catch (error: any) {
+      console.log("GOOGLE SIGNUP ERROR:", error);
+
+      const code = error?.code;
+
+      if (code === "auth/unauthorized-domain") {
+        Alert.alert(
+          "Erro",
+          "Domínio não autorizado. Adicione 'localhost' (e/ou '127.0.0.1') em Firebase Auth → Settings → Authorized domains."
+        );
+        return;
+      }
+
+      if (code === "auth/operation-not-allowed") {
+        Alert.alert(
+          "Erro",
+          "Provedor Google não está habilitado. Ative em Firebase Auth → Sign-in method → Google."
+        );
+        return;
+      }
+
+      Alert.alert("Erro", error?.message ?? "Falha ao entrar com Google.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const onSocial = (provider: string) => {
+    if (provider === "Google") return onGoogleSignUp();
     Alert.alert("Login social", `Clicou em: ${provider}`);
   };
 
@@ -72,7 +177,6 @@ export default function SignUpScreen() {
     <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ shell igual Scan/History (borda discreta no web) */}
       <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
           <KeyboardAvoidingView
@@ -84,9 +188,9 @@ export default function SignUpScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* ✅ formulário centralizado no web */}
               <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
                 <View style={styles.topRow}>
+                  {/* ✅ use rota absoluta para evitar bugs */}
                   <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
                     <Text style={styles.backText}>‹</Text>
                   </Pressable>
@@ -139,8 +243,14 @@ export default function SignUpScreen() {
                   />
 
                   <View style={styles.bottomArea}>
-                    <Pressable style={styles.primaryBtn} onPress={onCreateAccount}>
-                      <Text style={styles.primaryBtnText}>Create Account</Text>
+                    <Pressable
+                      style={[styles.primaryBtn, loading && { opacity: 0.6 }]}
+                      onPress={onCreateAccount}
+                      disabled={loading}
+                    >
+                      <Text style={styles.primaryBtnText}>
+                        {loading ? "Criando..." : "Create Account"}
+                      </Text>
                     </Pressable>
 
                     <View style={styles.dividerRow}>
@@ -177,11 +287,8 @@ function SocialIcon({ icon, onPress }: { icon: any; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
-
-  // ✅ igual Scan/History no web
   pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // ✅ shell igual Scan/History
   shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
   shellWeb: {
     height: "100%",
@@ -192,10 +299,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#0b0f12",
   },
 
-  // ✅ padding padrão
   scroll: { flexGrow: 1, padding: 16, paddingBottom: 24, justifyContent: "center" },
 
-  // ✅ seu card interno (mantido)
   contentWrap: {
     flex: 1,
     backgroundColor: "#171A1F",

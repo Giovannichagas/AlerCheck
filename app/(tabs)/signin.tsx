@@ -1,5 +1,5 @@
 import { router, Stack } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -15,7 +15,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  getRedirectResult,
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
+} from "firebase/auth";
 import { auth } from "../../app/services/firebase";
 
 // images
@@ -40,6 +46,20 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // ✅ captura o retorno quando usamos redirect (caso popup seja bloqueado)
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          Alert.alert("Bem-vindo!", result.user.email || "");
+          router.replace("/(tabs)/scan");
+        }
+      })
+      .catch((e) => console.log("Redirect error:", e));
+  }, []);
+
   const onSignIn = async () => {
     if (!email || !password) {
       Alert.alert("Erro", "Preencha email e senha");
@@ -59,13 +79,85 @@ export default function SignInScreen() {
       router.replace("/(tabs)/scan");
     } catch (error: any) {
       console.log("LOGIN ERROR:", error);
+
+      // mensagens mais amigáveis
+      const code = error?.code;
+      if (code === "auth/user-not-found") {
+        Alert.alert("Erro", "Usuário não encontrado.");
+        return;
+      }
+      if (code === "auth/wrong-password") {
+        Alert.alert("Erro", "Senha incorreta.");
+        return;
+      }
+      if (code === "auth/invalid-email") {
+        Alert.alert("Erro", "Email inválido.");
+        return;
+      }
+
       Alert.alert("Erro ao entrar", error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const onGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      // ✅ Expo Web: popup é o melhor
+      if (Platform.OS === "web") {
+        try {
+          const result = await signInWithPopup(auth, provider);
+          Alert.alert("Bem-vindo!", result.user.email || "");
+          router.replace("/(tabs)/scan");
+        } catch (e: any) {
+          // Se popup for bloqueado/fechado, cai para redirect
+          if (e?.code === "auth/popup-blocked" || e?.code === "auth/popup-closed-by-user") {
+            await signInWithRedirect(auth, provider);
+            return; // o retorno é capturado no useEffect acima
+          }
+          throw e;
+        }
+        return;
+      }
+
+      Alert.alert(
+        "Info",
+        "Google no mobile será configurado depois (expo-auth-session / google-signin)."
+      );
+    } catch (error: any) {
+      console.log("GOOGLE LOGIN ERROR:", error);
+
+      const code = error?.code;
+
+      if (code === "auth/unauthorized-domain") {
+        Alert.alert(
+          "Erro",
+          "Domínio não autorizado. Adicione 'localhost' (e/ou '127.0.0.1') em Firebase Auth → Settings → Authorized domains."
+        );
+        return;
+      }
+
+      if (code === "auth/operation-not-allowed") {
+        Alert.alert(
+          "Erro",
+          "Provedor Google não está habilitado. Ative em Firebase Auth → Sign-in method → Google."
+        );
+        return;
+      }
+
+      Alert.alert("Erro", error?.message ?? "Falha ao entrar com Google.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onSocial = (provider: string) => {
+    if (provider === "Google") return onGoogleSignIn();
     Alert.alert("Login social", provider);
   };
 
@@ -89,7 +181,7 @@ export default function SignInScreen() {
               contentContainerStyle={styles.scroll}
               showsVerticalScrollIndicator={false}
             >
-              {/* ✅ conteúdo centralizado no web, sem “ficar pequeno” */}
+              {/* ✅ conteúdo centralizado no web */}
               <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
                 {/* BACK */}
                 <View style={styles.topRow}>
@@ -168,7 +260,7 @@ export default function SignInScreen() {
 
 function SocialIcon({ icon, onPress }: { icon: any; onPress: () => void }) {
   return (
-    <Pressable style={styles.socialBtn} onPress={onPress}>
+    <Pressable style={styles.socialBtn} onPress={onPress} disabled={false}>
       <Image source={icon} style={styles.socialIcon} />
     </Pressable>
   );
@@ -176,11 +268,8 @@ function SocialIcon({ icon, onPress }: { icon: any; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
-
-  // ✅ igual Scan/History no web
   pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // ✅ shell igual Scan/History
   shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
   shellWeb: {
     height: "100%",
@@ -191,15 +280,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#0b0f12",
   },
 
-  // ✅ padding padrão das telas
-  scroll: {
-    flexGrow: 1,
-    padding: 16,
-    paddingBottom: 24,
-    justifyContent: "center",
-  },
+  scroll: { flexGrow: 1, padding: 16, paddingBottom: 24, justifyContent: "center" },
 
-  // ✅ card do formulário (mantém seu design)
   contentWrap: {
     backgroundColor: "#171A1F",
     borderRadius: 18,
@@ -212,13 +294,7 @@ const styles = StyleSheet.create({
   },
 
   topRow: { height: 40, justifyContent: "center" },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  backBtn: { width: 40, height: 40, borderRadius: 999, justifyContent: "center", alignItems: "center" },
   backText: { color: "#fff", fontSize: 28 },
 
   header: { alignItems: "center", marginBottom: 16 },
@@ -259,18 +335,9 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
 
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 18,
-  },
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 18 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.18)" },
-  dividerText: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  dividerText: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "700" },
 
   socialRow: { flexDirection: "row", justifyContent: "center", gap: 18 },
   socialBtn: {
@@ -281,10 +348,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  socialIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    resizeMode: "cover",
-  },
+  socialIcon: { width: 40, height: 40, borderRadius: 999, resizeMode: "cover" },
 });
