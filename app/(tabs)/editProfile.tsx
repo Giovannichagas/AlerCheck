@@ -181,9 +181,7 @@ export default function EditProfileScreen() {
             {/* Header */}
             <View style={styles.header}>
               <Image source={LOGO} style={styles.logo} />
-              <Text style={styles.appName}>
-                Aler<Text style={styles.appNameAccent}>Check</Text>
-              </Text>
+              
               <Text style={styles.screenTitle}>Change profile</Text>
             </View>
 

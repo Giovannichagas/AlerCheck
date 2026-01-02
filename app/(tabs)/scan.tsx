@@ -1,6 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
+
 import {
   Alert,
   Image,
@@ -15,6 +16,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const LOGO = require("../../assets/images/logo.jpeg");
 
 type Allergen = {
   id: string;
@@ -119,12 +122,7 @@ export default function ScanScreen() {
           >
             {/* HEADER */}
             <View style={styles.headerRow}>
-              <View style={styles.brandRow}>
-                <View style={styles.brandBadge}>
-                  <Text style={styles.brandBadgeText}>A</Text>
-                </View>
-                <Text style={styles.brandText}>AlerCheck</Text>
-              </View>
+              <Image source={LOGO} style={styles.brandLogo} />
 
               <View style={styles.headerCenter}>
                 <Text style={styles.h1}>Target Allergen Scanner</Text>
@@ -134,16 +132,17 @@ export default function ScanScreen() {
               </View>
 
               <View style={styles.headerIcons}>
-                <View style={styles.smallCircle}>
-                  <Ionicons
-                    name="notifications-outline"
-                    size={16}
-                    color="#000"
-                  />
-                </View>
-                <View style={styles.smallCircle}>
-                  <Ionicons name="person-outline" size={16} color="#000" />
-                </View>
+                
+                  <View style={styles.headerIcons}>
+                    <Pressable
+                      style={styles.smallCircle}
+                      onPress={() => router.push("/(tabs)/profile")}
+                      hitSlop={10}
+                    >
+                      <Ionicons name="person-outline" size={16} color="#000" />
+                    </Pressable>
+                  </View>
+
               </View>
             </View>
 
@@ -449,6 +448,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
     marginBottom: 10,
   },
+  brandLogo: {
+    width: 58,
+    height: 58,
+    borderRadius: 8,
+    resizeMode: "cover", // ou "contain" se preferir não cortar
+  },
+
+
   itemLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   itemIcon: {
     width: 28,
