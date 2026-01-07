@@ -104,7 +104,7 @@ export default function ScanScreen() {
     };
 
     router.push({
-      pathname: "/(tabs)/scanResult",
+      pathname: "../../(tabs)/scanResult",
       params: { payload: encodeURIComponent(JSON.stringify(payload)) },
     });
   }

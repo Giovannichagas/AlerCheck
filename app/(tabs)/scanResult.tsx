@@ -113,7 +113,7 @@ export default function ScanResultScreen() {
   }, [ingredients, photoUri, hasAlert, found]);
 
   function goToHistory(itemId: string) {
-    router.push({ pathname: "/(tabs)/history", params: { id: itemId } });
+    router.push({ pathname: "../(tabs)/history", params: { id: itemId } });
   }
 
   return (
