@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
   Platform,
@@ -9,17 +9,13 @@ import {
   StyleSheet,
   Text,
   useWindowDimensions,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const PLACEHOLDER = require("../../assets/images/logo.jpeg");
+import { allergenCheck, AllergenCheckResponse } from "../services/alercheckApi";
 
-type Payload = {
-  ingredients?: string;
-  photoUri?: string | null;
-  selectedAllergens?: string[];
-};
+const PLACEHOLDER = require("../../assets/images/logo.jpeg");
 
 type HistoryItem = {
   id: string;
@@ -30,54 +26,82 @@ type HistoryItem = {
   matched?: string[];
 };
 
-function decodePayload(raw?: string): Payload {
-  try {
-    if (!raw) return {};
-    return JSON.parse(decodeURIComponent(raw));
-  } catch {
-    return {};
-  }
-}
-
 export default function ScanResultScreen() {
-  const { payload } = useLocalSearchParams<{ payload?: string }>();
-  const data = useMemo(() => decodePayload(payload), [payload]);
+  // ✅ agora a tela recebe params diretos (do scan.tsx)
+  const params = useLocalSearchParams<{
+    ingredients?: string;
+    allergens?: string; // string "Milk,Eggs"
+    photoUri?: string;
+  }>();
 
-  const ingredients = data.ingredients ?? "";
-  const photoUri = data.photoUri ?? null;
-  const selectedAllergens = data.selectedAllergens ?? [];
+  const ingredients = useMemo(() => (params.ingredients ?? "").toString().trim(), [params.ingredients]);
+  const photoUri = useMemo(() => (params.photoUri ?? "").toString().trim(), [params.photoUri]);
+
+  const selectedAllergens = useMemo(() => {
+    const raw = (params.allergens ?? "").toString();
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [params.allergens]);
 
   const [hoverId, setHoverId] = useState<string | null>(null);
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // ✅ mesmo “tamanho/shell” do Scan/History
   const APP_MAX_W = 920;
   const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
-  const found = useMemo(() => {
-    const text = ingredients.toLowerCase();
+  // ✅ estado da IA
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [ai, setAi] = useState<AllergenCheckResponse | null>(null);
 
-    const synonyms: Record<string, string[]> = {
-      Peanuts: ["peanut", "peanuts", "amendoim", "amendoins"],
-      "Tree Nuts": ["nuts", "nozes", "castanha", "castanhas", "almond", "amêndoa", "amendoa"],
-      Milk: ["milk", "leite", "lactose", "whey"],
-      Eggs: ["egg", "eggs", "ovo", "ovos"],
-      Gluten: ["gluten", "wheat", "trigo", "barley", "cevada", "rye", "centeio"],
-      Soy: ["soy", "soja"],
-      Fish: ["fish", "peixe"],
-      Shellfish: ["shrimp", "prawn", "crab", "lobster", "marisco", "camarão", "camarao"],
+  useEffect(() => {
+    let mounted = true;
+
+    async function run() {
+      // só chama IA se tiver ingredientes e alergias selecionadas
+      if (!ingredients || selectedAllergens.length === 0) {
+        setAi(null);
+        setAiError(null);
+        setAiLoading(false);
+        return;
+      }
+
+      try {
+        setAiLoading(true);
+        setAiError(null);
+
+        const resp = await allergenCheck({
+          ingredientsText: ingredients,
+          allergens: selectedAllergens,
+          locale: "pt-BR",
+        });
+
+        if (!mounted) return;
+        setAi(resp);
+      } catch (e: any) {
+        if (!mounted) return;
+        setAiError(e?.message ?? "Erro ao consultar IA");
+        setAi(null);
+      } finally {
+        if (!mounted) return;
+        setAiLoading(false);
+      }
+    }
+
+    run();
+    return () => {
+      mounted = false;
     };
+  }, [ingredients, selectedAllergens.join(",")]);
 
-    return selectedAllergens.filter((a) => {
-      const keys = synonyms[a] ?? [a.toLowerCase()];
-      return keys.some((k) => text.includes(k.toLowerCase()));
-    });
-  }, [ingredients, selectedAllergens]);
+  const aiHasAlert = !!ai?.hasRisk || (ai?.matched?.length ?? 0) > 0;
+  const hasAlert = aiHasAlert;
 
-  const hasAlert = found.length > 0;
-
+  // lista fake só pra UI (depois você liga com seu histórico real)
   const mockHistory = useMemo<HistoryItem[]>(() => {
     const items: HistoryItem[] = [
       { id: "h1", title: "Organic Peanut Butter", ingredients: "peanuts, salt", checkedAt: "Checked 1 day ago", hasAlert: true, matched: ["Peanuts"] },
@@ -85,52 +109,38 @@ export default function ScanResultScreen() {
       { id: "h3", title: "Gluten-free Bread", ingredients: "rice flour, yeast, salt", checkedAt: "Checked 3 days ago", hasAlert: false },
       { id: "h4", title: "Chocolate Cookies", ingredients: "wheat, milk, soy lecithin", checkedAt: "Checked 4 days ago", hasAlert: true, matched: ["Gluten", "Milk", "Soy"] },
       { id: "h5", title: "Yogurt", ingredients: "milk, cultures", checkedAt: "Checked 5 days ago", hasAlert: true, matched: ["Milk"] },
-      { id: "h6", title: "Pasta", ingredients: "wheat semolina", checkedAt: "Checked 6 days ago", hasAlert: true, matched: ["Gluten"] },
-      { id: "h7", title: "Soy Sauce", ingredients: "soy, wheat, salt", checkedAt: "Checked 1 week ago", hasAlert: true, matched: ["Soy", "Gluten"] },
-      { id: "h8", title: "Egg Omelette", ingredients: "eggs, butter, salt", checkedAt: "Checked 8 days ago", hasAlert: true, matched: ["Eggs"] },
-      { id: "h9", title: "Fish Sticks", ingredients: "fish, wheat, oil", checkedAt: "Checked 9 days ago", hasAlert: true, matched: ["Fish", "Gluten"] },
-      { id: "h10", title: "Shrimp Salad", ingredients: "shrimp, mayo, lemon", checkedAt: "Checked 10 days ago", hasAlert: true, matched: ["Shellfish"] },
-      { id: "h11", title: "Granola Bar", ingredients: "nuts, oats, honey", checkedAt: "Checked 11 days ago", hasAlert: true, matched: ["Tree Nuts"] },
-      { id: "h12", title: "Rice Bowl", ingredients: "rice, chicken, veggies", checkedAt: "Checked 12 days ago", hasAlert: false },
-      { id: "h13", title: "Cheese", ingredients: "milk, salt", checkedAt: "Checked 13 days ago", hasAlert: true, matched: ["Milk"] },
-      { id: "h14", title: "Hummus", ingredients: "chickpeas, tahini, lemon", checkedAt: "Checked 14 days ago", hasAlert: false },
-      { id: "h15", title: "Pancakes", ingredients: "wheat, milk, eggs", checkedAt: "Checked 15 days ago", hasAlert: true, matched: ["Gluten", "Milk", "Eggs"] },
     ];
 
-    if (ingredients.trim() || photoUri) {
+    if (ingredients || photoUri) {
       items.unshift({
         id: "latest",
         title: "Latest Scan (current)",
-        ingredients: ingredients.trim() || "(no ingredients)",
+        ingredients: ingredients || "(no ingredients)",
         checkedAt: "Checked just now",
         hasAlert,
-        matched: hasAlert ? found : [],
+        matched: hasAlert ? (ai?.matched ?? []) : [],
       });
       return items.slice(0, 15);
     }
 
     return items.slice(0, 15);
-  }, [ingredients, photoUri, hasAlert, found]);
+  }, [ingredients, photoUri, hasAlert, ai]);
 
   function goToHistory(itemId: string) {
-    router.push({ pathname: "../(tabs)/history", params: { id: itemId } });
+    // mais estável do que pathname/params
+    router.push(`/history?id=${itemId}`);
   }
 
   return (
     <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ shell igual Scan/History */}
       <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             {/* Header */}
             <View style={styles.headerRow}>
-              <Pressable
-                onPress={() => router.replace("/(tabs)/scan")}
-                style={styles.backBtn}
-                hitSlop={10}
-              >
+              <Pressable onPress={() => router.replace("/(tabs)/scan")} style={styles.backBtn} hitSlop={10}>
                 <Text style={styles.backText}>‹</Text>
               </Pressable>
 
@@ -146,13 +156,12 @@ export default function ScanResultScreen() {
               />
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.productTitle}>Received payload</Text>
+                <Text style={styles.productTitle}>Received data</Text>
                 <Text style={styles.productSub} numberOfLines={2}>
                   {ingredients || "No ingredients typed"}
                 </Text>
                 <Text style={styles.productMeta}>
-                  TRUE Allergens:{" "}
-                  {selectedAllergens.length ? selectedAllergens.join(", ") : "None"}
+                  TRUE Allergens: {selectedAllergens.length ? selectedAllergens.join(", ") : "None"}
                 </Text>
               </View>
             </View>
@@ -164,14 +173,38 @@ export default function ScanResultScreen() {
               <Text style={styles.alertTitle}>
                 {hasAlert ? "Allergen Alert" : "No allergen detected"}
               </Text>
-              <Text style={styles.alertText}>
-                {hasAlert
-                  ? `Matched: ${found.join(", ")}`
-                  : "No matches based on your selected allergens (placeholder check)."}
-              </Text>
+
+              {aiLoading ? (
+                <Text style={styles.alertText}>Consultando IA...</Text>
+              ) : aiError ? (
+                <Text style={styles.alertText}>Erro: {aiError}</Text>
+              ) : hasAlert ? (
+                <Text style={styles.alertText}>
+                  Matched: {(ai?.matched ?? []).join(", ") || "-"}
+                </Text>
+              ) : (
+                <Text style={styles.alertText}>No matches based on your selected allergens.</Text>
+              )}
+
+              {/* warning */}
+              {!aiLoading && !aiError && ai?.warning ? (
+                <Text style={[styles.alertText, { marginTop: 10 }]}>
+                  ⚠️ {ai.warning}
+                </Text>
+              ) : null}
+
+              {/* alternativas */}
+              {!aiLoading && !aiError && ai?.alternatives?.length ? (
+                <View style={{ marginTop: 10 }}>
+                  <Text style={[styles.alertText, { fontWeight: "900" }]}>Alternativas sugeridas:</Text>
+                  {ai.alternatives.map((alt, idx) => (
+                    <Text key={idx} style={styles.alertText}>• {alt}</Text>
+                  ))}
+                </View>
+              ) : null}
             </View>
 
-            {/* Debug */}
+            {/* Debug (para você ver a integração funcionando) */}
             <View style={styles.debugCard}>
               <Text style={styles.debugTitle}>Debug (integration)</Text>
 
@@ -183,8 +216,24 @@ export default function ScanResultScreen() {
                 {selectedAllergens.length ? selectedAllergens.join(", ") : "-"}
               </Text>
 
-              <Text style={styles.debugLabel}>AI response (placeholder):</Text>
-              <Text style={styles.debugValue}>-</Text>
+              <Text style={styles.debugLabel}>AI response:</Text>
+
+              {aiLoading ? (
+                <Text style={styles.debugValue}>Loading...</Text>
+              ) : aiError ? (
+                <Text style={styles.debugValue}>Erro: {aiError}</Text>
+              ) : ai ? (
+                <>
+                  <Text style={styles.debugValue}>
+                    {ai.explanation || "-"}
+                  </Text>
+                  {!!ai.matched?.length && (
+                    <Text style={styles.debugValue}>Matched: {ai.matched.join(", ")}</Text>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.debugValue}>-</Text>
+              )}
             </View>
 
             {/* Lista */}
@@ -259,11 +308,8 @@ export default function ScanResultScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
-
-  // ✅ mesmo comportamento do Scan/History no web
   pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // ✅ shell/container do app
   shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
   shellWeb: {
     height: "100%",
@@ -274,7 +320,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#0b0f12",
   },
 
-  // ✅ padding padrão
   scroll: { padding: 16, paddingBottom: 24 },
 
   headerRow: {

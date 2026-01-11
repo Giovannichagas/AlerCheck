@@ -1,7 +1,6 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-
 import {
   Alert,
   Image,
@@ -37,7 +36,7 @@ const INITIAL_ALLERGENS: Allergen[] = [
 ];
 
 type ScanParams = {
-  photoUri?: string; // vem da tela camera (opcional)
+  photoUri?: string;
 };
 
 export default function ScanScreen() {
@@ -46,7 +45,7 @@ export default function ScanScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // ✅ mesmo “tamanho”/shell do History
+  // shell responsivo
   const APP_MAX_W = 920;
   const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
@@ -56,7 +55,7 @@ export default function ScanScreen() {
   const [search, setSearch] = useState("");
   const [allergens, setAllergens] = useState<Allergen[]>(INITIAL_ALLERGENS);
 
-  // ✅ reset do estado quando a tela monta
+  // reset na primeira montagem
   useEffect(() => {
     setIngredients("");
     setPhotoUri(null);
@@ -64,7 +63,7 @@ export default function ScanScreen() {
     setAllergens(INITIAL_ALLERGENS);
   }, []);
 
-  // ✅ aplica photoUri vindo da camera
+  // aplica photoUri vindo da camera
   useEffect(() => {
     if (typeof photoUriParam === "string" && photoUriParam.length > 0) {
       setPhotoUri(photoUriParam);
@@ -83,29 +82,30 @@ export default function ScanScreen() {
     );
   }
 
+  /**
+   * ✅ AQUI só enviamos os dados para o scanResult.
+   * A IA (Llama/Ollama) será chamada no scanResult para gerar alerta e alternativas.
+   */
   function handleSubmit() {
     const text = ingredients.trim();
+
     const selectedAllergens = allergens
       .filter((a) => a.enabled)
       .map((a) => a.label);
 
     if (!text && !photoUri) {
-      Alert.alert(
-        "Atenção",
-        "Digite os ingredientes ou tire uma foto antes de enviar."
-      );
+      Alert.alert("Atenção", "Digite os ingredientes ou tire uma foto antes de enviar.");
       return;
     }
 
-    const payload = {
-      ingredients: text,
-      photoUri: photoUri ?? null,
-      selectedAllergens,
-    };
-
+    // Envia tudo para scanResult
     router.push({
-      pathname: "../../(tabs)/scanResult",
-      params: { payload: encodeURIComponent(JSON.stringify(payload)) },
+      pathname: "/(tabs)/scanResult",
+      params: {
+        ingredients: text,
+        allergens: selectedAllergens.join(","), // string para URL
+        photoUri: photoUri ?? "",
+      },
     });
   }
 
@@ -113,36 +113,26 @@ export default function ScanScreen() {
     <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ shell igual History (centralizado no web, ocupa altura toda) */}
       <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             {/* HEADER */}
             <View style={styles.headerRow}>
               <Image source={LOGO} style={styles.brandLogo} />
 
               <View style={styles.headerCenter}>
                 <Text style={styles.h1}>Target Allergen Scanner</Text>
-                <Text style={styles.sub}>
-                  Stay Safe by Scanning Products for Allergens
-                </Text>
+                <Text style={styles.sub}>Stay Safe by Scanning Products for Allergens</Text>
               </View>
 
               <View style={styles.headerIcons}>
-                
-                  <View style={styles.headerIcons}>
-                    <Pressable
-                      style={styles.smallCircle}
-                      onPress={() => router.push("/(tabs)/profile")}
-                      hitSlop={10}
-                    >
-                      <Ionicons name="person-outline" size={16} color="#000" />
-                    </Pressable>
-                  </View>
-
+                <Pressable
+                  style={styles.smallCircle}
+                  onPress={() => router.push("/(tabs)/profile")}
+                  hitSlop={10}
+                >
+                  <Ionicons name="person-outline" size={16} color="#000" />
+                </Pressable>
               </View>
             </View>
 
@@ -155,10 +145,7 @@ export default function ScanScreen() {
               <Text style={styles.scanTitle}>Scan a Product</Text>
               <Text style={styles.scanHint}>Point camera at barcode</Text>
 
-              <Pressable
-                style={styles.scanBtn}
-                onPress={() => router.push("/(tabs)/camera")}
-              >
+              <Pressable style={styles.scanBtn} onPress={() => router.push("/(tabs)/camera")}>
                 <Ionicons name="camera-outline" size={16} color="#4AB625" />
                 <Text style={styles.scanBtnText}>Start Scanning</Text>
               </Pressable>
@@ -176,7 +163,7 @@ export default function ScanScreen() {
               ) : null}
             </View>
 
-            {/* INGREDIENTS */}
+            {/* INGREDIENTS (prato) */}
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Describe ingredients (for AI)</Text>
               <TextInput
@@ -194,7 +181,7 @@ export default function ScanScreen() {
               </Pressable>
             </View>
 
-            {/* ALLERGENS */}
+            {/* ALLERGENS (o que o usuário tem alergia) */}
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Allergens</Text>
               <Text style={styles.help}>
@@ -202,11 +189,7 @@ export default function ScanScreen() {
               </Text>
 
               <View style={styles.searchBox}>
-                <Feather
-                  name="search"
-                  size={16}
-                  color="rgba(255,255,255,0.6)"
-                />
+                <Feather name="search" size={16} color="rgba(255,255,255,0.6)" />
                 <TextInput
                   value={search}
                   onChangeText={setSearch}
@@ -216,11 +199,7 @@ export default function ScanScreen() {
                 />
                 {search.length > 0 && (
                   <Pressable onPress={() => setSearch("")} hitSlop={10}>
-                    <Ionicons
-                      name="close-circle"
-                      size={18}
-                      color="rgba(255,255,255,0.35)"
-                    />
+                    <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.35)" />
                   </Pressable>
                 )}
               </View>
@@ -274,11 +253,8 @@ function AllergenItem({
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
-
-  // ✅ mesmo comportamento do History no web
   pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // ✅ shell/container do app
   shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
   shellWeb: {
     height: "100%",
@@ -289,7 +265,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#0b0f12",
   },
 
-  // ✅ mantém responsivo e com padding padrão
   scroll: { padding: 16, paddingBottom: 24 },
 
   headerRow: {
@@ -299,28 +274,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     gap: 12,
   },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 8, minWidth: 110 },
-  brandBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandBadgeText: { color: "#4AB625", fontWeight: "900" },
-  brandText: { color: "#dce3ea", fontWeight: "900", fontSize: 14 },
+
+  brandLogo: { width: 58, height: 58, borderRadius: 8, resizeMode: "cover" },
 
   headerCenter: { flex: 1, alignItems: "center" },
   h1: { color: "#ffffff", fontSize: 16, fontWeight: "900", textAlign: "center" },
-  sub: {
-    color: "rgba(255,255,255,0.55)",
-    textAlign: "center",
-    marginTop: 4,
-    fontSize: 11.5,
-  },
+  sub: { color: "rgba(255,255,255,0.55)", textAlign: "center", marginTop: 4, fontSize: 11.5 },
 
   headerIcons: { flexDirection: "row", gap: 10, minWidth: 110, justifyContent: "flex-end" },
   smallCircle: {
@@ -448,14 +407,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
     marginBottom: 10,
   },
-  brandLogo: {
-    width: 58,
-    height: 58,
-    borderRadius: 8,
-    resizeMode: "cover", // ou "contain" se preferir não cortar
-  },
-
-
   itemLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   itemIcon: {
     width: 28,
