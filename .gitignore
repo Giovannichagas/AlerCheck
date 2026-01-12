@@ -42,4 +42,7 @@ app-example
 /ios
 /android
 
+# env files(nunca commitar)
 .env
+.env.*
+!.env.exemple

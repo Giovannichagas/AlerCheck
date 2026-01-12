@@ -39,13 +39,22 @@ type ScanParams = {
   photoUri?: string;
 };
 
+function normalizeIngredients(raw: string) {
+  // aceita: vírgula, ponto e vírgula e quebra de linha
+  // transforma em "item1, item2, item3"
+  return raw
+    .split(/[,;\n]+/g)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 export default function ScanScreen() {
   const { photoUri: photoUriParam } = useLocalSearchParams<ScanParams>();
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // shell responsivo
   const APP_MAX_W = 920;
   const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
@@ -55,7 +64,6 @@ export default function ScanScreen() {
   const [search, setSearch] = useState("");
   const [allergens, setAllergens] = useState<Allergen[]>(INITIAL_ALLERGENS);
 
-  // reset na primeira montagem
   useEffect(() => {
     setIngredients("");
     setPhotoUri(null);
@@ -63,7 +71,6 @@ export default function ScanScreen() {
     setAllergens(INITIAL_ALLERGENS);
   }, []);
 
-  // aplica photoUri vindo da camera
   useEffect(() => {
     if (typeof photoUriParam === "string" && photoUriParam.length > 0) {
       setPhotoUri(photoUriParam);
@@ -82,29 +89,24 @@ export default function ScanScreen() {
     );
   }
 
-  /**
-   * ✅ AQUI só enviamos os dados para o scanResult.
-   * A IA (Llama/Ollama) será chamada no scanResult para gerar alerta e alternativas.
-   */
   function handleSubmit() {
-    const text = ingredients.trim();
+    const normalized = normalizeIngredients(ingredients);
 
     const selectedAllergens = allergens
       .filter((a) => a.enabled)
       .map((a) => a.label);
 
-    if (!text && !photoUri) {
+    if (!normalized && !photoUri) {
       Alert.alert("Atenção", "Digite os ingredientes ou tire uma foto antes de enviar.");
       return;
     }
 
-    // Envia tudo para scanResult
     router.push({
       pathname: "/(tabs)/scanResult",
       params: {
-        ingredients: text,
-        allergens: selectedAllergens.join(","), // string para URL
-        photoUri: photoUri ?? "",
+        ingredients: encodeURIComponent(normalized),
+        allergens: encodeURIComponent(selectedAllergens.join(",")),
+        photoUri: encodeURIComponent(photoUri ?? ""),
       },
     });
   }
@@ -116,7 +118,6 @@ export default function ScanScreen() {
       <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            {/* HEADER */}
             <View style={styles.headerRow}>
               <Image source={LOGO} style={styles.brandLogo} />
 
@@ -136,7 +137,6 @@ export default function ScanScreen() {
               </View>
             </View>
 
-            {/* SCAN CARD */}
             <View style={styles.scanCard}>
               <View style={styles.scanIconWrap}>
                 <Ionicons name="camera-outline" size={22} color="#fff" />
@@ -163,13 +163,13 @@ export default function ScanScreen() {
               ) : null}
             </View>
 
-            {/* INGREDIENTS (prato) */}
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Describe ingredients (for AI)</Text>
               <TextInput
                 value={ingredients}
                 onChangeText={setIngredients}
-                placeholder="Type ingredients here (e.g., peanuts, milk, soy...)"
+                placeholder="Ex: arroz, feijão; frango
+(leia vírgula, ; e quebra de linha)"
                 placeholderTextColor="rgba(255,255,255,0.45)"
                 style={styles.textArea}
                 multiline
@@ -181,7 +181,6 @@ export default function ScanScreen() {
               </Pressable>
             </View>
 
-            {/* ALLERGENS (o que o usuário tem alergia) */}
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Allergens</Text>
               <Text style={styles.help}>
@@ -267,29 +266,13 @@ const styles = StyleSheet.create({
 
   scroll: { padding: 16, paddingBottom: 24 },
 
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-    gap: 12,
-  },
-
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 12 },
   brandLogo: { width: 58, height: 58, borderRadius: 8, resizeMode: "cover" },
-
   headerCenter: { flex: 1, alignItems: "center" },
   h1: { color: "#ffffff", fontSize: 16, fontWeight: "900", textAlign: "center" },
   sub: { color: "rgba(255,255,255,0.55)", textAlign: "center", marginTop: 4, fontSize: 11.5 },
-
   headerIcons: { flexDirection: "row", gap: 10, minWidth: 110, justifyContent: "flex-end" },
-  smallCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  smallCircle: { width: 30, height: 30, borderRadius: 999, backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" },
 
   scanCard: {
     alignSelf: "stretch",
@@ -304,119 +287,32 @@ const styles = StyleSheet.create({
     elevation: 3,
     marginBottom: 12,
   },
-  scanIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: "#4AB625",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
+  scanIconWrap: { width: 52, height: 52, borderRadius: 999, backgroundColor: "#4AB625", alignItems: "center", justifyContent: "center", marginBottom: 10 },
   scanTitle: { color: "#fff", fontSize: 16, fontWeight: "900", marginBottom: 4 },
   scanHint: { color: "rgba(255,255,255,0.9)", fontSize: 11, marginBottom: 12 },
-  scanBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FFF",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-  },
+  scanBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FFF", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 999 },
   scanBtnText: { color: "#4AB625", fontWeight: "900", fontSize: 12 },
 
-  photoPreviewBox: {
-    marginTop: 14,
-    width: "100%",
-    backgroundColor: "rgba(0,0,0,0.18)",
-    borderRadius: 14,
-    padding: 10,
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-  },
+  photoPreviewBox: { marginTop: 14, width: "100%", backgroundColor: "rgba(0,0,0,0.18)", borderRadius: 14, padding: 10, flexDirection: "row", gap: 10, alignItems: "center" },
   photoPreview: { width: 54, height: 54, borderRadius: 12, resizeMode: "cover" },
   photoLabel: { color: "#fff", fontWeight: "900", fontSize: 12, marginBottom: 2 },
-  photoRemove: {
-    color: "rgba(255,255,255,0.85)",
-    textDecorationLine: "underline",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  photoRemove: { color: "rgba(255,255,255,0.85)", textDecorationLine: "underline", fontSize: 11, fontWeight: "700" },
 
-  card: {
-    alignSelf: "stretch",
-    borderRadius: 14,
-    padding: 14,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    marginBottom: 12,
-  },
-
+  card: { alignSelf: "stretch", borderRadius: 14, padding: 14, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 12 },
   sectionTitle: { color: "#fff", fontWeight: "900", fontSize: 13, marginBottom: 10 },
 
-  textArea: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#4AB625",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: "#fff",
-    backgroundColor: "#0f151a",
-    fontSize: 12.5,
-    minHeight: 110,
-  },
+  textArea: { width: "100%", borderWidth: 1, borderColor: "#4AB625", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: "#fff", backgroundColor: "#0f151a", fontSize: 12.5, minHeight: 110 },
 
-  submitBtn: {
-    marginTop: 12,
-    backgroundColor: "#4AB625",
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
+  submitBtn: { marginTop: 12, backgroundColor: "#4AB625", borderRadius: 14, paddingVertical: 12, alignItems: "center" },
   submitBtnText: { color: "#fff", fontWeight: "900", fontSize: 13 },
 
   help: { color: "rgba(255,255,255,0.55)", fontSize: 11, lineHeight: 16, marginBottom: 10 },
 
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#0f151a",
-    borderWidth: 1,
-    borderColor: "#4AB625",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
+  searchBox: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#0f151a", borderWidth: 1, borderColor: "#4AB625", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
   searchInput: { flex: 1, color: "#fff", fontSize: 12.5 },
 
-  itemRow: {
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    marginBottom: 10,
-  },
+  itemRow: { borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 10 },
   itemLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  itemIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  itemIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)", alignItems: "center", justifyContent: "center" },
   itemText: { color: "#fff", fontWeight: "800", fontSize: 12.5 },
 });
