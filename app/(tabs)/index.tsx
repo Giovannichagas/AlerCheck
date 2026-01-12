@@ -50,26 +50,26 @@ export default function HomeScreen() {
                 </View>
 
                 <Text style={styles.heroTitle}>
-                  Allergens <Text style={styles.heroGreen}>check</Text>
+                  Allergens <Text style={styles.heroGreen}>Check</Text>
                 </Text>
 
                 <Text style={styles.heroSub}>
-                  Scan products instantly to check for allergens{"\n"}
-                  and make informed shopping decisions.
+                  Escanea productos al instante para comprobar si contienen alérgenos{"\n"}
+                  y tomar decisiones de compra informadas.
                 </Text>
               </View>
 
               {/* Card inferior */}
               <View style={styles.card}>
-                <Text style={styles.welcome}>Welcome to</Text>
+                <Text style={styles.welcome}>Bienvenido a</Text>
 
                 <Text style={styles.title}>
-                  Allergens <Text style={styles.titleGreen}>check</Text>
+                  Allergens <Text style={styles.titleGreen}>Check</Text>
                 </Text>
 
                 <Text style={styles.subtitle}>
-                  Scan products instantly to check for allergens{"\n"}
-                  and make informed shopping decisions.
+                  Escanea productos al instante para comprobar si contienen alérgenos{"\n"}
+                  y tomar decisiones de compra informadas.
                 </Text>
 
                 <View style={styles.list}>
@@ -83,12 +83,13 @@ export default function HomeScreen() {
                   style={styles.primaryBtn}
                   onPress={() => router.push("/privacy")}
                 >
-                  <Text style={styles.primaryBtnText}>Get Started</Text>
+                  <Text style={styles.primaryBtnText}>Empieza ahora</Text>
                 </Pressable>
 
                 <Text style={styles.legal}>
-                  By continuing, you agree to our Terms of Service{"\n"}
-                  and Privacy Policy
+                  Al continuar, aceptas nuestros Términos de servicio
+                  y nuestra Política de privacidad
+
                 </Text>
               </View>
             </View>

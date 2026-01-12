@@ -56,41 +56,40 @@ export default function HomeScreen() {
               <View style={styles.card}>
                 <Image source={LOGO} style={styles.logo} />
 
-                <Text style={styles.welcome}>Bem-vindo(a) ao</Text>
+                <Text style={styles.welcome}>Bienvenido(a) a</Text>
 
                 <Text style={styles.title}>
-                  Verificação de <Text style={styles.titleAccent}>alérgenos</Text>
+                  Verificación de <Text style={styles.titleAccent}>alérgenos</Text>
                 </Text>
 
                 <Text style={styles.subtitle}>
-                  Escaneie produtos instantaneamente para verificar a presença de
-                  alérgenos e tomar decisões de compra mais conscientes.
+                  Escanea productos al instante para comprobar la presencia de alérgenos y tomar decisiones de compra más conscientes.
                 </Text>
 
                 <View style={styles.list}>
-                  <Feature text="Leitura rápida de código de barras" />
-                  <Feature text="Detecção de Alérgenos" />
+                  <Feature text="Lectura rápida de códigos de barras" />
+                  <Feature text="Detección de alérgenos." />
                   <Feature text="Preferências personalizadas" />
-                  <Feature text="Rastreamento do histórico de varreduras" />
+                  <Feature text="Seguimiento del historial de escaneos" />
                 </View>
 
                 <Pressable
                   style={styles.primaryBtn}
                   onPress={() => router.push("/signin")}
                 >
-                  <Text style={styles.primaryBtnText}>Comece agora</Text>
+                  <Text style={styles.primaryBtnText}>Comienza ahora</Text>
                 </Pressable>
 
                 <Pressable
                   style={styles.secondaryBtn}
                   onPress={() => router.push("/signup")}
                 >
-                  <Text style={styles.secondaryBtnText}>Create an Account</Text>
+                  <Text style={styles.secondaryBtnText}>Crear una cuenta</Text>
                 </Pressable>
 
                 <Text style={styles.legal}>
-                  Ao continuar, você concorda com nossos Termos de Serviço{"\n"}e
-                  Política de Privacidade.
+                  Al continuar, aceptas nuestros Términos de Servicio
+                    y la Política de Privacidad.
                 </Text>
               </View>
             </ScrollView>

@@ -25,14 +25,14 @@ type Allergen = {
 };
 
 const INITIAL_ALLERGENS: Allergen[] = [
-  { id: "peanuts", label: "Peanuts", enabled: true },
-  { id: "tree_nuts", label: "Tree Nuts", enabled: true },
-  { id: "milk", label: "Milk", enabled: false },
-  { id: "eggs", label: "Eggs", enabled: false },
+  { id: "cacahuete", label: "Cacahuete", enabled: true },
+  { id: "nueces", label: "Nueces", enabled: true },
+  { id: "leche", label: "Leche", enabled: false },
+  { id: "huevos", label: "Huevos", enabled: false },
   { id: "gluten", label: "Gluten", enabled: true },
-  { id: "soy", label: "Soy", enabled: false },
-  { id: "fish", label: "Fish", enabled: false },
-  { id: "shellfish", label: "Shellfish", enabled: false },
+  { id: "soja", label: "Soja", enabled: false },
+  { id: "pescado", label: "Pescado", enabled: false },
+  { id: "marisco", label: "Marisco", enabled: false },
 ];
 
 type ScanParams = {
@@ -97,7 +97,7 @@ export default function ScanScreen() {
       .map((a) => a.label);
 
     if (!normalized && !photoUri) {
-      Alert.alert("Atenção", "Digite os ingredientes ou tire uma foto antes de enviar.");
+      Alert.alert("Aviso", "Introduce los ingredientes o haz una foto antes de enviar.");
       return;
     }
 
@@ -122,8 +122,8 @@ export default function ScanScreen() {
               <Image source={LOGO} style={styles.brandLogo} />
 
               <View style={styles.headerCenter}>
-                <Text style={styles.h1}>Target Allergen Scanner</Text>
-                <Text style={styles.sub}>Stay Safe by Scanning Products for Allergens</Text>
+                <Text style={styles.h1}>Escáner de alérgenos seleccionados</Text>
+                <Text style={styles.sub}>Protege tu salud escaneando los productos para detectar alérgenos</Text>
               </View>
 
               <View style={styles.headerIcons}>
@@ -142,21 +142,21 @@ export default function ScanScreen() {
                 <Ionicons name="camera-outline" size={22} color="#fff" />
               </View>
 
-              <Text style={styles.scanTitle}>Scan a Product</Text>
-              <Text style={styles.scanHint}>Point camera at barcode</Text>
+              <Text style={styles.scanTitle}>Escanear producto</Text>
+              <Text style={styles.scanHint}>Apunta la cámara al código</Text>
 
               <Pressable style={styles.scanBtn} onPress={() => router.push("/(tabs)/camera")}>
                 <Ionicons name="camera-outline" size={16} color="#4AB625" />
-                <Text style={styles.scanBtnText}>Start Scanning</Text>
+                <Text style={styles.scanBtnText}>Comenzar a escanear</Text>
               </Pressable>
 
               {photoUri ? (
                 <View style={styles.photoPreviewBox}>
                   <Image source={{ uri: photoUri }} style={styles.photoPreview} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.photoLabel}>Photo added</Text>
+                    <Text style={styles.photoLabel}>Foto agregada</Text>
                     <Pressable onPress={() => setPhotoUri(null)} hitSlop={10}>
-                      <Text style={styles.photoRemove}>Remove photo</Text>
+                      <Text style={styles.photoRemove}>Quitar foto</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -164,12 +164,11 @@ export default function ScanScreen() {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Describe ingredients (for AI)</Text>
+              <Text style={styles.sectionTitle}>Describe los ingredientes para que la IA los procese.</Text>
               <TextInput
                 value={ingredients}
                 onChangeText={setIngredients}
-                placeholder="Ex: arroz, feijão; frango
-(leia vírgula, ; e quebra de linha)"
+                placeholder="Ej.: arroz, frijoles; pollo (lee comas, ; y saltos de línea)"
                 placeholderTextColor="rgba(255,255,255,0.45)"
                 style={styles.textArea}
                 multiline
@@ -177,14 +176,14 @@ export default function ScanScreen() {
               />
 
               <Pressable style={styles.submitBtn} onPress={handleSubmit}>
-                <Text style={styles.submitBtnText}>Submit</Text>
+                <Text style={styles.submitBtnText}>Enviar formulario</Text>
               </Pressable>
             </View>
 
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Allergens</Text>
               <Text style={styles.help}>
-                Select the allergens you want to be alerted about when scanning products.
+                Selecciona los alérgenos para recibir alertas.
               </Text>
 
               <View style={styles.searchBox}>

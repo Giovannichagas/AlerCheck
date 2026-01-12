@@ -249,13 +249,13 @@ export default function SignUpScreen() {
                       disabled={loading}
                     >
                       <Text style={styles.primaryBtnText}>
-                        {loading ? "Criando..." : "Create Account"}
+                        {loading ? "Criando..." : "Crear una cuenta"}
                       </Text>
                     </Pressable>
 
                     <View style={styles.dividerRow}>
                       <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>Sign in with</Text>
+                      <Text style={styles.dividerText}>Iniciar sesión con</Text>
                       <View style={styles.dividerLine} />
                     </View>
 

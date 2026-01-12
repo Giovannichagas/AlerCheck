@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { allergenCheck } from "../services/alercheckApi";
+import { allergenCheck, type AllergenCheckResponse } from "../services/alercheckApi";
 
 const PLACEHOLDER = require("../../assets/images/logo.jpeg");
 
@@ -27,6 +27,15 @@ type HistoryItem = {
   matched?: string[];
 };
 
+// ✅ decode seguro (evita crash se vier string malformada)
+function safeDecode(s: string) {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
 // WEB: converte URI -> base64
 async function uriToBase64Web(uri: string): Promise<string> {
   const resp = await fetch(uri);
@@ -35,7 +44,7 @@ async function uriToBase64Web(uri: string): Promise<string> {
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const dataUrl = String(reader.result);
+      const dataUrl = String(reader.result); // data:image/...;base64,XXXX
       const base64 = dataUrl.split(",")[1] || "";
       resolve(base64);
     };
@@ -51,20 +60,23 @@ export default function ScanResultScreen() {
     photoUri?: string;
   }>();
 
-  const ingredients = useMemo(
-    () => decodeURIComponent((params.ingredients ?? "").toString()).trim(),
-    [params.ingredients]
-  );
+  const ingredients = useMemo(() => {
+    const raw = (params.ingredients ?? "").toString();
+    return safeDecode(raw).trim();
+  }, [params.ingredients]);
 
   const selectedAllergens = useMemo(() => {
-    const raw = decodeURIComponent((params.allergens ?? "").toString());
-    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+    const raw = safeDecode((params.allergens ?? "").toString());
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   }, [params.allergens]);
 
-  const photoUri = useMemo(
-    () => decodeURIComponent((params.photoUri ?? "").toString()).trim(),
-    [params.photoUri]
-  );
+  const photoUri = useMemo(() => {
+    const raw = (params.photoUri ?? "").toString();
+    return safeDecode(raw).trim();
+  }, [params.photoUri]);
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
@@ -76,15 +88,24 @@ export default function ScanResultScreen() {
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [ai, setAi] = useState<any>(null);
+  const [ai, setAi] = useState<AllergenCheckResponse | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
     async function run() {
-      if (!ingredients || selectedAllergens.length === 0) {
+      // ✅ só não chama se NÃO tem texto E NÃO tem foto
+      if (!ingredients && !photoUri) {
         setAi(null);
-        setAiError(null);
+        setAiError("Escriba ingredientes o envíe una foto.");
+        setAiLoading(false);
+        return;
+      }
+
+      // ✅ precisa de alergia selecionada pra cruzar
+      if (selectedAllergens.length === 0) {
+        setAi(null);
+        setAiError("Seleccione al menos 1 alergia para analizar.");
         setAiLoading(false);
         return;
       }
@@ -93,31 +114,25 @@ export default function ScanResultScreen() {
         setAiLoading(true);
         setAiError(null);
 
-        let imageBase64: string | undefined = undefined;
+        let imageBase64: string | undefined;
 
-        // Só converte imagem se existir
-        if (photoUri) {
-          if (Platform.OS === "web") {
-            imageBase64 = await uriToBase64Web(photoUri);
-          } else {
-            // mobile: depois podemos usar expo-file-system
-            // por enquanto não envia imagem no mobile
-            imageBase64 = undefined;
-          }
+        // ✅ no WEB, converte a imagem para base64 e envia para o backend
+        if (photoUri && Platform.OS === "web") {
+          imageBase64 = await uriToBase64Web(photoUri);
         }
 
         const resp = await allergenCheck({
-          ingredientsText: ingredients,
+          ingredientsText: ingredients, // pode ser "" se só foto
           allergens: selectedAllergens,
           locale: "pt-BR",
-          imageBase64,
+          imageBase64, // opcional
         });
 
         if (!mounted) return;
         setAi(resp);
       } catch (e: any) {
         if (!mounted) return;
-        setAiError(e?.message ?? "Erro ao consultar IA");
+        setAiError(e?.message ?? "Error al realizar la consulta a la IA.");
         setAi(null);
       } finally {
         if (!mounted) return;
@@ -142,7 +157,7 @@ export default function ScanResultScreen() {
     items.unshift({
       id: "latest",
       title: "Latest Scan (current)",
-      ingredients: ingredients || "(no ingredients)",
+      ingredients: ingredients || "(no ingredients – photo only)",
       checkedAt: "Checked just now",
       hasAlert,
       matched: hasAlert ? (ai?.matched ?? []) : [],
@@ -174,12 +189,12 @@ export default function ScanResultScreen() {
             <View style={styles.productCard}>
               <Image source={photoUri ? { uri: photoUri } : PLACEHOLDER} style={styles.productImg} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.productTitle}>Received data</Text>
+                <Text style={styles.productTitle}>Datos recibidos correctamente</Text>
                 <Text style={styles.productSub} numberOfLines={2}>
-                  {ingredients || "No ingredients typed"}
+                  {ingredients || "Sin ingredientes introducidos (solo escaneo con foto)"}
                 </Text>
                 <Text style={styles.productMeta}>
-                  TRUE Allergens: {selectedAllergens.length ? selectedAllergens.join(", ") : "None"}
+                  Alérgenos verdaderos: {selectedAllergens.length ? selectedAllergens.join(", ") : "None"}
                 </Text>
               </View>
             </View>
@@ -188,7 +203,7 @@ export default function ScanResultScreen() {
 
             <View style={[styles.alertCard, hasAlert ? styles.alertDanger : styles.alertSafe]}>
               <Text style={styles.alertTitle}>
-                {hasAlert ? "Allergen Alert" : "No allergen detected"}
+                {hasAlert ? "Alerta de alérgenos" : "Ningún alérgeno detectado"}
               </Text>
 
               {aiLoading ? (
@@ -203,17 +218,18 @@ export default function ScanResultScreen() {
                   Matched: {(ai?.matched ?? []).join(", ") || "-"}
                 </Text>
               ) : (
-                <Text style={styles.alertText}>No matches based on your selected allergens.</Text>
+                <Text style={styles.alertText}>No hay coincidencias según los alérgenos seleccionados.</Text>
               )}
 
               {!aiLoading && !aiError && ai?.warning ? (
                 <Text style={[styles.alertText, { marginTop: 10 }]}>⚠️ {ai.warning}</Text>
               ) : null}
 
+              {/* ✅ alternativas completas com motivo nutricional */}
               {!aiLoading && !aiError && ai?.safeAlternatives?.length ? (
                 <View style={{ marginTop: 10 }}>
                   <Text style={[styles.alertText, { fontWeight: "900" }]}>Alternativas sugeridas:</Text>
-                  {ai.safeAlternatives.map((alt: any, idx: number) => (
+                  {ai.safeAlternatives.map((alt, idx) => (
                     <Text key={idx} style={styles.alertText}>
                       • {alt.item} — {alt.why}
                     </Text>
@@ -223,19 +239,19 @@ export default function ScanResultScreen() {
             </View>
 
             <View style={styles.debugCard}>
-              <Text style={styles.debugTitle}>Debug (integration)</Text>
+              <Text style={styles.debugTitle}>Debug (integración)</Text>
 
-              <Text style={styles.debugLabel}>Ingredients:</Text>
+              <Text style={styles.debugLabel}>Ingredientes:</Text>
               <Text style={styles.debugValue}>{ingredients || "-"}</Text>
 
-              <Text style={styles.debugLabel}>Selected TRUE Allergens:</Text>
+              <Text style={styles.debugLabel}>Alérgenos seleccionados (verdaderos):</Text>
               <Text style={styles.debugValue}>
                 {selectedAllergens.length ? selectedAllergens.join(", ") : "-"}
               </Text>
 
-              <Text style={styles.debugLabel}>AI response:</Text>
+              <Text style={styles.debugLabel}>Respuesta IA:</Text>
               {aiLoading ? (
-                <Text style={styles.debugValue}>Loading...</Text>
+                <Text style={styles.debugValue}>Cargando...</Text>
               ) : aiError ? (
                 <Text style={styles.debugValue}>Erro: {aiError}</Text>
               ) : ai ? (
@@ -251,8 +267,8 @@ export default function ScanResultScreen() {
             </View>
 
             <View style={styles.listHeaderRow}>
-              <Text style={styles.listTitle}>Recent checks (last 15)</Text>
-              <Text style={styles.listHint}>Click the arrow to open History</Text>
+              <Text style={styles.listTitle}>Comprobaciones recientes (last 15)</Text>
+              <Text style={styles.listHint}>Pulsa la flecha para abrir el historial</Text>
             </View>
 
             <View style={styles.listCard}>
@@ -299,7 +315,7 @@ export default function ScanResultScreen() {
             </View>
 
             <Pressable style={styles.btn} onPress={() => router.replace("/(tabs)/scan")}>
-              <Text style={styles.btnText}>Back to Scan</Text>
+              <Text style={styles.btnText}>Volver a escanear</Text>
             </Pressable>
 
             <View style={{ height: 30 }} />
@@ -331,17 +347,7 @@ const styles = StyleSheet.create({
   backText: { color: "#fff", fontSize: 28, marginTop: -2 },
   headerTitle: { color: "#4AB625", fontSize: 16, fontWeight: "800" },
 
-  productCard: {
-    flexDirection: "row",
-    gap: 12,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    marginBottom: 14,
-    alignItems: "center",
-  },
+  productCard: { flexDirection: "row", gap: 12, padding: 12, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 14, alignItems: "center" },
   productImg: { width: 54, height: 54, borderRadius: 12, resizeMode: "cover" },
   productTitle: { color: "#fff", fontWeight: "900", fontSize: 13 },
   productSub: { color: "rgba(255,255,255,0.70)", fontSize: 11.5, marginTop: 3 },

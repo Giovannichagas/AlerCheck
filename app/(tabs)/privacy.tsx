@@ -26,18 +26,18 @@ export default function PrivacyScreen() {
   const [accepted, setAccepted] = useState(false);
 
   const usageBullets = [
-    "Save your allergy and dietary restriction preferences.",
-    "Process your data to identify product compatibility.",
-    "Use your selected allergens to generate ingredient warnings.",
-    "Improve scan results and reduce false positives over time.",
-    "Store recent scan history locally (prototype behavior may reset on restart).",
+    "Guarda tus preferencias de alergias y restricciones alimentarias.",
+    "Procesa tus datos para identificar la compatibilidad de los productos.",
+    "Utiliza los alérgenos que hayas seleccionado para generar advertencias sobre los ingredientes.",
+    "Mejora los resultados del escaneo y reduce los falsos positivos con el tiempo.",
+    "Almacena el historial reciente de escaneos de forma local (el comportamiento del prototipo puede reiniciarse al reiniciar).",
   ];
 
   const securityBullets = [
-    "We apply standard security practices to protect stored information.",
-    "No system is completely secure — avoid submitting sensitive personal data.",
-    "If third-party services are enabled (AI/analytics), data may be processed only for the requested functionality.",
-    "You can remove a photo before submitting a scan and edit your preferences anytime.",
+    "Aplicamos prácticas de seguridad estándar para proteger la información almacenada.",
+    "Ningún sistema es completamente seguro; evita enviar datos personales sensibles.",
+    "Si se habilitan servicios de terceros (IA/analítica), los datos podrán procesarse únicamente para la funcionalidad solicitada.",
+    "Puedes eliminar una foto antes de enviar un escaneo y modificar tus preferencias en cualquier momento.",
   ];
 
   function goToIndex() {
@@ -76,20 +76,17 @@ export default function PrivacyScreen() {
               <Image source={LOGO} style={styles.logo} />
               <Text style={styles.brand}>AlerCheck</Text>
 
-              <Text style={styles.title}>Allergen Scanner Privacy Policy</Text>
+              <Text style={styles.title}>Política de privacidad de Allergen Scanner</Text>
               <Text style={styles.subtitle}>
-                Take a moment to review our privacy policy to ensure a safe and confidential
-                experience with the Allergen Scanner.
+                Tómate un momento para revisar nuestra política de privacidad y garantizar una experiencia segura y confidencial con Allergen Scanner.
               </Text>
             </View>
 
             {/* ✅ UM ÚNICO CARD (agora ocupa o shell, igual Scan/History) */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Data Collection and Usage</Text>
+              <Text style={styles.cardTitle}>Recopilación y uso de datos</Text>
               <Text style={styles.cardText}>
-                Target Allergen Scanner helps you shop smarter by using your allergen and dietary
-                preferences to provide tailored product scans, ingredient warnings, and personalized
-                suggestions—ensuring safer, more informed shopping decisions every time.
+                Target Allergen Scanner te ayuda a comprar de forma más inteligente utilizando tus preferencias de alérgenos y restricciones alimentarias para ofrecer escaneos de productos personalizados, advertencias sobre ingredientes y sugerencias adaptadas, garantizando decisiones de compra más seguras y mejor informadas en todo momento.
               </Text>
 
               <View style={styles.bullets}>
@@ -103,10 +100,12 @@ export default function PrivacyScreen() {
 
               <View style={styles.divider} />
 
-              <Text style={styles.cardTitle}>Data Security</Text>
+              <Text style={styles.cardTitle}>Seguridad de los datos</Text>
               <Text style={styles.cardText}>
                 Your privacy matters to us. We aim to protect your information and reduce
-                unauthorized access, so you can use our services with confidence and peace of mind.
+                Tu privacidad es importante para nosotros. Nuestro objetivo es proteger tu información y reducir el acceso no autorizado, para que puedas utilizar nuestros servicios con confianza y tranquilidad.
+En un entorno de producción, esta política debería explicar claramente los plazos de conservación, los procedimientos de eliminación y cualquier procesador externo implicado (IA/analítica)
+unauthorized access, so you can use our services with confidence and peace of mind.
                 In production, this policy should clearly explain retention, deletion, and any
                 external processors (AI/analytics).
               </Text>
@@ -121,8 +120,7 @@ export default function PrivacyScreen() {
               </View>
 
               <Text style={[styles.cardText, { marginTop: 12 }]}>
-                If you have questions, add your official support contact here before going live
-                (for example, a support email address or website).
+                Si tienes preguntas, añade aquí tu contacto oficial de soporte antes de publicar la aplicación (por ejemplo, una dirección de correo electrónico de soporte o un sitio web).
               </Text>
             </View>
 
@@ -141,12 +139,12 @@ export default function PrivacyScreen() {
                 <View style={[styles.checkbox, accepted && styles.checkboxOn]}>
                   {accepted ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
                 </View>
-                <Text style={styles.agreeText}>I agree to the Privacy Policy</Text>
+                <Text style={styles.agreeText}>Acepto la Política de privacidad</Text>
               </Pressable>
 
               <View style={styles.buttonsRow}>
                 <Pressable style={[styles.btn, styles.btnCancel]} onPress={goToIndex}>
-                  <Text style={styles.btnCancelText}>Cancel</Text>
+                  <Text style={styles.btnCancelText}>Cancelar</Text>
                 </Pressable>
 
                 <Pressable

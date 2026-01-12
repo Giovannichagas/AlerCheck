@@ -195,7 +195,7 @@ export default function SignInScreen() {
                   <Image source={LOGO} style={styles.logo} />
                 </View>
 
-                <Text style={styles.title}>Faça login na sua conta</Text>
+                <Text style={styles.title}>Inicie sesión en su cuenta</Text>
 
                 {/* FORM */}
                 <View style={styles.form}>
@@ -219,7 +219,7 @@ export default function SignInScreen() {
                   />
 
                   <Pressable onPress={onForgotPassword} style={styles.forgotWrap}>
-                    <Text style={styles.forgot}>Esqueceu sua senha?</Text>
+                    <Text style={styles.forgot}>¿Has olvidado tu contraseña?</Text>
                   </Pressable>
 
                   {/* BOTTOM */}
@@ -236,7 +236,7 @@ export default function SignInScreen() {
 
                     <View style={styles.dividerRow}>
                       <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>Entrar com</Text>
+                      <Text style={styles.dividerText}>Entrar con</Text>
                       <View style={styles.dividerLine} />
                     </View>
 
