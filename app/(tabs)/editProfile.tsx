@@ -15,41 +15,61 @@ import {
   View,
 } from "react-native";
 
-import { signOut, updateEmail, updatePassword } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signOut,
+  updateEmail,
+  updatePassword,
+  type User,
+} from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../../app/services/firebase";
 
-// Firestore
-import { doc, getDoc, setDoc } from "firebase/firestore";
-
-
 const LOGO = require("../../assets/images/logo.jpeg");
-
-// ✅ ajuste para sua rota real
 const PROFILE_ROUTE = "/(tabs)/profile";
 
 export default function EditProfileScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
-  const user = auth.currentUser;
 
-  // ✅ mesmo “tamanho”/shell do Scan/History
   const APP_MAX_W = 920;
   const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
+
+  const [user, setUser] = useState<User | null>(null);
 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState(user?.email ?? "");
+  const [email, setEmail] = useState(""); // ✅ não inicia com auth.currentUser
   const [newPass, setNewPass] = useState("");
   const [phone, setPhone] = useState("");
 
+  // ✅ garante user correto (principalmente no WEB)
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+    return unsub;
+  }, []);
+
+  // ✅ carrega Firestore quando o user real existir
   useEffect(() => {
     let mounted = true;
 
     async function load() {
       try {
-        if (!user?.uid) return;
+        setLoadingProfile(true);
+
+        if (!user?.uid) {
+          // não autenticado
+          if (mounted) {
+            setFullName("");
+            setPhone("");
+            setEmail("");
+          }
+          return;
+        }
 
         const ref = doc(db, "users", user.uid);
         const snap = await getDoc(ref);
@@ -62,10 +82,14 @@ export default function EditProfileScreen() {
           setPhone(data.phone ?? "");
           setEmail((data.email ?? user.email) ?? "");
         } else {
+          // se não existir doc no Firestore, usa o email do auth real
+          setFullName("");
+          setPhone("");
           setEmail(user.email ?? "");
         }
       } catch (e) {
         console.log("LOAD PROFILE ERROR:", e);
+        Alert.alert("Erro", "Falha ao carregar seu perfil.");
       } finally {
         if (mounted) setLoadingProfile(false);
       }
@@ -91,13 +115,30 @@ export default function EditProfileScreen() {
   }
 
   async function onSave() {
+    if (saving) return;
+
+    if (loadingProfile) {
+      Alert.alert("Aguarde", "O perfil ainda está carregando.");
+      return;
+    }
+
     if (!user?.uid) {
       Alert.alert("Erro", "Usuário não autenticado.");
       return;
     }
 
-    if (!fullName.trim() || !email.trim() || !phone.trim()) {
+    const fullNameTrim = fullName.trim();
+    const emailTrim = email.trim();
+    const phoneTrim = phone.trim();
+    const passTrim = newPass.trim();
+
+    if (!fullNameTrim || !emailTrim || !phoneTrim) {
       Alert.alert("Atenção", "Preencha nome, email e telefone.");
+      return;
+    }
+
+    if (passTrim.length > 0 && passTrim.length < 6) {
+      Alert.alert("Atenção", "A nova senha precisa ter pelo menos 6 caracteres.");
       return;
     }
 
@@ -109,9 +150,9 @@ export default function EditProfileScreen() {
       await setDoc(
         ref,
         {
-          fullName: fullName.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
+          fullName: fullNameTrim,
+          email: emailTrim,
+          phone: phoneTrim,
           updatedAt: new Date().toISOString(),
         },
         { merge: true }
@@ -119,24 +160,17 @@ export default function EditProfileScreen() {
 
       // 2) Auth (email/senha)
       const currentEmail = user.email ?? "";
-      const nextEmail = email.trim();
 
-      if (nextEmail && nextEmail !== currentEmail) {
-        await updateEmail(user, nextEmail);
+      if (emailTrim !== currentEmail) {
+        await updateEmail(user, emailTrim);
       }
 
-      if (newPass.trim().length > 0) {
-        if (newPass.trim().length < 6) {
-          Alert.alert("Atenção", "A nova senha precisa ter pelo menos 6 caracteres.");
-          setSaving(false);
-          return;
-        }
-        await updatePassword(user, newPass.trim());
+      if (passTrim.length > 0) {
+        await updatePassword(user, passTrim);
       }
 
       Alert.alert("Sucesso", "Dados atualizados! Faça login novamente.");
 
-      // 3) Desloga e manda para SignIn
       await signOut(auth);
       router.replace("/signin");
     } catch (err: any) {
@@ -162,7 +196,6 @@ export default function EditProfileScreen() {
     <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ shell igual Scan/History */}
       <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
         <KeyboardAvoidingView
           style={{ flex: 1, width: "100%" }}
@@ -173,19 +206,15 @@ export default function EditProfileScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* seta discreta (sem círculo) */}
             <Pressable onPress={goBackToProfile} hitSlop={12} style={styles.backBtn}>
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </Pressable>
 
-            {/* Header */}
             <View style={styles.header}>
               <Image source={LOGO} style={styles.logo} />
-              
               <Text style={styles.screenTitle}>Change profile</Text>
             </View>
 
-            {/* Card verde */}
             <View style={styles.greenCard}>
               <View style={styles.avatarCircle}>
                 <Text style={styles.avatarText}>{initials}</Text>
@@ -201,7 +230,6 @@ export default function EditProfileScreen() {
               </View>
             </View>
 
-            {/* Inputs */}
             <View style={styles.form}>
               <TextInput
                 value={fullName}
@@ -240,25 +268,24 @@ export default function EditProfileScreen() {
               />
             </View>
 
-            {/* Bottom */}
             <View style={styles.bottomArea}>
               <Pressable
-                style={[
-                  styles.primaryBtn,
-                  (saving || loadingProfile) && { opacity: 0.65 },
-                ]}
+                style={[styles.primaryBtn, (saving || loadingProfile) && { opacity: 0.65 }]}
                 onPress={onSave}
                 disabled={saving || loadingProfile}
               >
                 <Text style={styles.primaryBtnText}>
-                  {saving ? "Saving..." : "Save changes"}
+                  {saving ? "Saving..." : loadingProfile ? "Loading..." : "Save changes"}
                 </Text>
               </Pressable>
 
               <Text style={styles.helper}>
-                {loadingProfile
-                  ? "Loading profile..."
-                  : "After saving, you will be redirected to Sign In."}
+                {loadingProfile ? "Loading profile..." : "After saving, you will be redirected to Sign In."}
+              </Text>
+
+              {/* debug opcional */}
+              <Text style={[styles.helper, { marginTop: 6 }]}>
+                {`AUTH EMAIL: ${user?.email ?? "(none)"}`}
               </Text>
             </View>
 
@@ -272,11 +299,8 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
-
-  // ✅ mesmo comportamento do Scan/History no web
   pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // ✅ shell igual Scan/History
   shell: { flex: 1, width: "100%", backgroundColor: "#171A1F" },
   shellWeb: {
     height: "100%",
@@ -294,18 +318,10 @@ const styles = StyleSheet.create({
     paddingBottom: 26,
   },
 
-  backBtn: {
-    alignSelf: "flex-start",
-    paddingVertical: 6,
-    paddingHorizontal: 2,
-    marginBottom: 8,
-  },
+  backBtn: { alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 2, marginBottom: 8 },
 
   header: { alignItems: "center", marginBottom: 18 },
   logo: { width: 64, height: 64, resizeMode: "contain", marginBottom: 10 },
-
-  appName: { color: "#fff", fontWeight: "900", fontSize: 14, marginBottom: 10 },
-  appNameAccent: { color: "#4AB625" },
   screenTitle: { color: "#fff", fontSize: 16, fontWeight: "900" },
 
   greenCard: {

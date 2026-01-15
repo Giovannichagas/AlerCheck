@@ -15,17 +15,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { allergenCheck, type AllergenCheckResponse } from "../services/alercheckApi";
+import { addHistory, getHistory, type StoredHistoryItem } from "../services/historyStore";
 
 const PLACEHOLDER = require("../../assets/images/logo.jpeg");
-
-type HistoryItem = {
-  id: string;
-  title: string;
-  ingredients: string;
-  checkedAt: string;
-  hasAlert: boolean;
-  matched?: string[];
-};
 
 // ✅ decode seguro (evita crash se vier string malformada)
 function safeDecode(s: string) {
@@ -51,6 +43,30 @@ async function uriToBase64Web(uri: string): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function formatCheckedAtISO(iso: string) {
+  const dt = new Date(iso);
+  const diffMs = Date.now() - dt.getTime();
+  const diffMin = Math.floor(diffMs / (60 * 1000));
+  const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+
+  if (diffMin < 1) return "Checked just now";
+  if (diffMin < 60) return `Checked ${diffMin} min ago`;
+  if (diffHours < 24) return `Checked ${diffHours} h ago`;
+  if (diffDays === 1) return "Checked 1 day ago";
+  return `Checked ${diffDays} days ago`;
+}
+
+// tenta gerar um “título” simples a partir do texto
+function makeTitle(ingredients: string) {
+  const s = (ingredients || "").trim();
+  if (!s) return "Scan (photo only)";
+  const first = s.split(",")[0]?.trim();
+  if (!first) return "Scan";
+  // limita tamanho
+  return first.length > 28 ? `${first.slice(0, 28)}…` : first;
 }
 
 export default function ScanResultScreen() {
@@ -89,6 +105,17 @@ export default function ScanResultScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [ai, setAi] = useState<AllergenCheckResponse | null>(null);
+
+  // ✅ histórico real (últimas 10)
+  const [history, setHistory] = useState<StoredHistoryItem[]>([]);
+
+  // carrega histórico ao abrir tela
+  useEffect(() => {
+    (async () => {
+      const h = await getHistory();
+      setHistory(h);
+    })();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -130,6 +157,27 @@ export default function ScanResultScreen() {
 
         if (!mounted) return;
         setAi(resp);
+
+        // ✅ salva no histórico (topo) e mantém só 10
+        const hasAlertLocal = !!resp?.hasRisk || (resp?.matched?.length ?? 0) > 0;
+
+        const itemToSave: StoredHistoryItem = {
+          id: String(Date.now()),
+          title: makeTitle(ingredients),
+          type: "Scan",
+          ingredients: ingredients || "(photo only)",
+          checkedAt: new Date().toISOString(),
+          hasAlert: hasAlertLocal,
+          matched: resp?.matched ?? [],
+          photoUri: photoUri || null,
+          selectedAllergens,
+          aiExplanation: resp?.explanation ?? "",
+          warning: resp?.warning,
+        };
+
+        const next = await addHistory(itemToSave);
+        if (!mounted) return;
+        setHistory(next);
       } catch (e: any) {
         if (!mounted) return;
         setAiError(e?.message ?? "Error al realizar la consulta a la IA.");
@@ -147,24 +195,6 @@ export default function ScanResultScreen() {
   }, [ingredients, selectedAllergens.join(","), photoUri]);
 
   const hasAlert = !!ai?.hasRisk || (ai?.matched?.length ?? 0) > 0;
-
-  const mockHistory = useMemo<HistoryItem[]>(() => {
-    const items: HistoryItem[] = [
-      { id: "h1", title: "Organic Peanut Butter", ingredients: "peanuts, salt", checkedAt: "Checked 1 day ago", hasAlert: true, matched: ["Peanuts"] },
-      { id: "h2", title: "Almond Milk", ingredients: "almonds, water, salt", checkedAt: "Checked 2 days ago", hasAlert: true, matched: ["Tree Nuts"] },
-    ];
-
-    items.unshift({
-      id: "latest",
-      title: "Latest Scan (current)",
-      ingredients: ingredients || "(no ingredients – photo only)",
-      checkedAt: "Checked just now",
-      hasAlert,
-      matched: hasAlert ? (ai?.matched ?? []) : [],
-    });
-
-    return items.slice(0, 15);
-  }, [ingredients, hasAlert, ai]);
 
   function goToHistory(itemId: string) {
     router.push(`/history?id=${itemId}`);
@@ -202,9 +232,7 @@ export default function ScanResultScreen() {
             <Text style={styles.sectionTitle}>Allergens</Text>
 
             <View style={[styles.alertCard, hasAlert ? styles.alertDanger : styles.alertSafe]}>
-              <Text style={styles.alertTitle}>
-                {hasAlert ? "Alerta de alérgenos" : "Ningún alérgeno detectado"}
-              </Text>
+              <Text style={styles.alertTitle}>{hasAlert ? "Alerta de alérgenos" : "Ningún alérgeno detectado"}</Text>
 
               {aiLoading ? (
                 <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
@@ -214,9 +242,7 @@ export default function ScanResultScreen() {
               ) : aiError ? (
                 <Text style={styles.alertText}>Erro: {aiError}</Text>
               ) : hasAlert ? (
-                <Text style={styles.alertText}>
-                  Matched: {(ai?.matched ?? []).join(", ") || "-"}
-                </Text>
+                <Text style={styles.alertText}>Matched: {(ai?.matched ?? []).join(", ") || "-"}</Text>
               ) : (
                 <Text style={styles.alertText}>No hay coincidencias según los alérgenos seleccionados.</Text>
               )}
@@ -225,7 +251,6 @@ export default function ScanResultScreen() {
                 <Text style={[styles.alertText, { marginTop: 10 }]}>⚠️ {ai.warning}</Text>
               ) : null}
 
-              {/* ✅ alternativas completas com motivo nutricional */}
               {!aiLoading && !aiError && ai?.safeAlternatives?.length ? (
                 <View style={{ marginTop: 10 }}>
                   <Text style={[styles.alertText, { fontWeight: "900" }]}>Alternativas sugeridas:</Text>
@@ -245,9 +270,7 @@ export default function ScanResultScreen() {
               <Text style={styles.debugValue}>{ingredients || "-"}</Text>
 
               <Text style={styles.debugLabel}>Alérgenos seleccionados (verdaderos):</Text>
-              <Text style={styles.debugValue}>
-                {selectedAllergens.length ? selectedAllergens.join(", ") : "-"}
-              </Text>
+              <Text style={styles.debugValue}>{selectedAllergens.length ? selectedAllergens.join(", ") : "-"}</Text>
 
               <Text style={styles.debugLabel}>Respuesta IA:</Text>
               {aiLoading ? (
@@ -257,9 +280,7 @@ export default function ScanResultScreen() {
               ) : ai ? (
                 <>
                   <Text style={styles.debugValue}>{ai.explanation || "-"}</Text>
-                  {!!ai.matched?.length && (
-                    <Text style={styles.debugValue}>Matched: {ai.matched.join(", ")}</Text>
-                  )}
+                  {!!ai.matched?.length && <Text style={styles.debugValue}>Matched: {ai.matched.join(", ")}</Text>}
                 </>
               ) : (
                 <Text style={styles.debugValue}>-</Text>
@@ -267,12 +288,12 @@ export default function ScanResultScreen() {
             </View>
 
             <View style={styles.listHeaderRow}>
-              <Text style={styles.listTitle}>Comprobaciones recientes (last 15)</Text>
+              <Text style={styles.listTitle}>Comprobaciones recientes (últimas 10)</Text>
               <Text style={styles.listHint}>Pulsa la flecha para abrir el historial</Text>
             </View>
 
             <View style={styles.listCard}>
-              {mockHistory.map((item) => {
+              {history.slice(0, 10).map((item, idx) => {
                 const hovered = hoverId === item.id;
 
                 return (
@@ -283,6 +304,7 @@ export default function ScanResultScreen() {
                     onHoverOut={isWeb ? () => setHoverId(null) : undefined}
                     style={[
                       styles.row,
+                      idx === 0 && { borderTopWidth: 0 }, // primeira linha sem “divisor” visual
                       hovered && styles.rowHover,
                       item.hasAlert && styles.rowAlertBorder,
                     ]}
@@ -290,14 +312,21 @@ export default function ScanResultScreen() {
                     <View style={styles.rowLeft}>
                       <Image source={PLACEHOLDER} style={styles.rowIcon} />
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.rowTitle} numberOfLines={1}>{item.title}</Text>
-                        <Text style={styles.rowSub} numberOfLines={1}>{item.checkedAt}</Text>
+                        <Text style={styles.rowTitle} numberOfLines={1}>
+                          {item.title || "Scan"}
+                        </Text>
+                        <Text style={styles.rowSub} numberOfLines={1}>
+                          {formatCheckedAtISO(item.checkedAt)}
+                        </Text>
+
                         {item.hasAlert && item.matched?.length ? (
                           <Text style={styles.rowMatched} numberOfLines={1}>
                             Matched: {item.matched.join(", ")}
                           </Text>
                         ) : (
-                          <Text style={styles.rowOk} numberOfLines={1}>No alerts</Text>
+                          <Text style={styles.rowOk} numberOfLines={1}>
+                            No alerts
+                          </Text>
                         )}
                       </View>
                     </View>
@@ -312,6 +341,14 @@ export default function ScanResultScreen() {
                   </Pressable>
                 );
               })}
+
+              {!history.length ? (
+                <View style={{ padding: 14 }}>
+                  <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
+                    Aún no hay historial. Haz un escaneo para que aparezca aquí.
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
             <Pressable style={styles.btn} onPress={() => router.replace("/(tabs)/scan")}>
@@ -347,7 +384,17 @@ const styles = StyleSheet.create({
   backText: { color: "#fff", fontSize: 28, marginTop: -2 },
   headerTitle: { color: "#4AB625", fontSize: 16, fontWeight: "800" },
 
-  productCard: { flexDirection: "row", gap: 12, padding: 12, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 14, alignItems: "center" },
+  productCard: {
+    flexDirection: "row",
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginBottom: 14,
+    alignItems: "center",
+  },
   productImg: { width: 54, height: 54, borderRadius: 12, resizeMode: "cover" },
   productTitle: { color: "#fff", fontWeight: "900", fontSize: 13 },
   productSub: { color: "rgba(255,255,255,0.70)", fontSize: 11.5, marginTop: 3 },
@@ -361,7 +408,14 @@ const styles = StyleSheet.create({
   alertTitle: { color: "#fff", fontWeight: "900", fontSize: 13, marginBottom: 6 },
   alertText: { color: "rgba(255,255,255,0.75)", fontSize: 12, lineHeight: 16 },
 
-  debugCard: { borderRadius: 14, padding: 14, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 14 },
+  debugCard: {
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginBottom: 14,
+  },
   debugTitle: { color: "#fff", fontWeight: "900", marginBottom: 10 },
   debugLabel: { color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 8 },
   debugValue: { color: "#fff", fontSize: 12, marginTop: 2 },
@@ -370,9 +424,24 @@ const styles = StyleSheet.create({
   listTitle: { color: "#fff", fontWeight: "900", fontSize: 13 },
   listHint: { color: "rgba(255,255,255,0.45)", fontSize: 11 },
 
-  listCard: { borderRadius: 14, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 14 },
+  listCard: {
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden",
+    marginBottom: 14,
+  },
 
-  row: { paddingHorizontal: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" },
+  row: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+  },
   rowHover: { backgroundColor: "rgba(255,255,255,0.08)" },
   rowAlertBorder: { borderLeftWidth: 3, borderLeftColor: "rgba(255,77,77,0.65)" },
 

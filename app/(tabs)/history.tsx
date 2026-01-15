@@ -14,43 +14,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { getHistory, type StoredHistoryItem } from "../services/historyStore";
+
 const PLACEHOLDER = require("../../assets/images/logo.jpeg");
-
-type HistoryItem = {
-  id: string;
-  title: string;
-  type: string;
-  ingredients: string;
-  checkedAt: Date;
-  hasAlert: boolean;
-  matched?: string[];
-  photoUri?: string | null;
-};
-
-const now = Date.now();
-const d = (daysAgo: number) => new Date(now - daysAgo * 24 * 60 * 60 * 1000);
-
-const MOCK_HISTORY: HistoryItem[] = [
-  { id: "h1", title: "Organic Peanut Butter", type: "Spread", ingredients: "peanuts, salt", checkedAt: d(1), hasAlert: true, matched: ["Peanuts"] },
-  { id: "h2", title: "Almond Milk", type: "Dairy", ingredients: "almonds, water, salt", checkedAt: d(2), hasAlert: true, matched: ["Tree Nuts"] },
-  { id: "h3", title: "Gluten-free Bread", type: "Bakery", ingredients: "rice flour, yeast, salt", checkedAt: d(3), hasAlert: false },
-  { id: "h4", title: "Chocolate Cookies", type: "Snack", ingredients: "wheat, milk, soy lecithin", checkedAt: d(4), hasAlert: true, matched: ["Gluten", "Milk", "Soy"] },
-  { id: "h5", title: "Yogurt", type: "Dairy", ingredients: "milk, cultures", checkedAt: d(5), hasAlert: true, matched: ["Milk"] },
-  { id: "h6", title: "Pasta", type: "Bakery", ingredients: "wheat semolina", checkedAt: d(6), hasAlert: true, matched: ["Gluten"] },
-  { id: "h7", title: "Soy Sauce", type: "Sauce", ingredients: "soy, wheat, salt", checkedAt: d(7), hasAlert: true, matched: ["Soy", "Gluten"] },
-  { id: "h8", title: "Egg Omelette", type: "Meal", ingredients: "eggs, butter, salt", checkedAt: d(8), hasAlert: true, matched: ["Eggs"] },
-  { id: "h9", title: "Fish Sticks", type: "Seafood", ingredients: "fish, wheat, oil", checkedAt: d(9), hasAlert: true, matched: ["Fish", "Gluten"] },
-  { id: "h10", title: "Shrimp Salad", type: "Seafood", ingredients: "shrimp, mayo, lemon", checkedAt: d(10), hasAlert: true, matched: ["Shellfish"] },
-  { id: "h11", title: "Granola Bar", type: "Snack", ingredients: "nuts, oats, honey", checkedAt: d(11), hasAlert: true, matched: ["Tree Nuts"] },
-  { id: "h12", title: "Rice Bowl", type: "Meal", ingredients: "rice, chicken, veggies", checkedAt: d(12), hasAlert: false },
-  { id: "h13", title: "Cheese", type: "Dairy", ingredients: "milk, salt", checkedAt: d(13), hasAlert: true, matched: ["Milk"] },
-  { id: "h14", title: "Hummus", type: "Snack", ingredients: "chickpeas, tahini, lemon", checkedAt: d(14), hasAlert: false },
-  { id: "h15", title: "Pancakes", type: "Bakery", ingredients: "wheat, milk, eggs", checkedAt: d(15), hasAlert: true, matched: ["Gluten", "Milk", "Eggs"] },
-];
 
 type DateFilter = "all" | "today" | "7d" | "30d";
 
-function formatCheckedAt(date: Date) {
+function formatCheckedAtISO(iso: string) {
+  const date = new Date(iso);
   const diffDays = Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000));
   if (diffDays <= 0) return "Checked today";
   if (diffDays === 1) return "Checked 1 day ago";
@@ -66,7 +37,6 @@ export default function HistoryScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // ✅ “container do app” (igual SignIn/Edit): mais largo que “celular”, mas sem esticar infinito
   const APP_MAX_W = 920;
   const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
@@ -75,44 +45,70 @@ export default function HistoryScreen() {
   const [typeFilter, setTypeFilter] = useState<string>("All");
 
   const [hoverId, setHoverId] = useState<string | null>(null);
-  const [selected, setSelected] = useState<HistoryItem | null>(null);
 
+  const [items, setItems] = useState<StoredHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [selected, setSelected] = useState<StoredHistoryItem | null>(null);
+
+  // ✅ carrega histórico (já vem limitado a 10 no historyStore)
+  async function load() {
+    setLoading(true);
+    try {
+      const h = await getHistory();
+      setItems(h);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // carrega ao entrar na tela
   useEffect(() => {
+    load();
+  }, []);
+
+  // também recarrega quando volta pra tela (web/mobile costuma re-render)
+  // (se você quiser garantir 100%, depois a gente usa useFocusEffect)
+  useEffect(() => {
+    if (items.length === 0) return;
+
     if (id) {
-      const hit = MOCK_HISTORY.find((x) => x.id === id);
+      const hit = items.find((x) => x.id === id);
       if (hit) setSelected(hit);
     } else {
-      setSelected((prev) => prev ?? MOCK_HISTORY[0] ?? null);
+      setSelected((prev) => prev ?? items[0] ?? null);
     }
-  }, [id]);
+  }, [id, items]);
 
   const types = useMemo(() => {
-    const set = new Set(MOCK_HISTORY.map((x) => x.type));
+    const set = new Set(items.map((x) => x.type ?? "Scan"));
     return ["All", ...Array.from(set).sort()];
-  }, []);
+  }, [items]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const today = new Date();
 
-    return MOCK_HISTORY
+    return items
       .filter((item) => {
-        if (dateFilter === "today") return isSameDay(item.checkedAt, today);
-        if (dateFilter === "7d") return item.checkedAt.getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000;
-        if (dateFilter === "30d") return item.checkedAt.getTime() >= Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const dt = new Date(item.checkedAt);
+
+        if (dateFilter === "today") return isSameDay(dt, today);
+        if (dateFilter === "7d") return dt.getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000;
+        if (dateFilter === "30d") return dt.getTime() >= Date.now() - 30 * 24 * 60 * 60 * 1000;
         return true;
       })
-      .filter((item) => (typeFilter === "All" ? true : item.type === typeFilter))
+      .filter((item) => (typeFilter === "All" ? true : (item.type ?? "Scan") === typeFilter))
       .filter((item) => {
         if (!q) return true;
         return (
-          item.title.toLowerCase().includes(q) ||
-          item.ingredients.toLowerCase().includes(q) ||
-          item.type.toLowerCase().includes(q)
+          (item.title ?? "").toLowerCase().includes(q) ||
+          (item.ingredients ?? "").toLowerCase().includes(q) ||
+          (item.type ?? "Scan").toLowerCase().includes(q)
         );
       })
-      .sort((a, b) => b.checkedAt.getTime() - a.checkedAt.getTime());
-  }, [query, dateFilter, typeFilter]);
+      .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+  }, [items, query, dateFilter, typeFilter]);
 
   const stats = useMemo(() => {
     const total = filtered.length;
@@ -121,7 +117,7 @@ export default function HistoryScreen() {
     return { total, alerts, safe };
   }, [filtered]);
 
-  function openDetails(item: HistoryItem) {
+  function openDetails(item: StoredHistoryItem) {
     setSelected(item);
   }
 
@@ -133,7 +129,10 @@ export default function HistoryScreen() {
         </Pressable>
 
         <Text style={styles.headerTitle}>History</Text>
-        <View style={{ width: 40 }} />
+
+        <Pressable onPress={load} hitSlop={10} style={{ width: 40, alignItems: "flex-end", justifyContent: "center" }}>
+          <Ionicons name="refresh" size={18} color="rgba(255,255,255,0.75)" />
+        </Pressable>
       </View>
 
       <View style={styles.statsRow}>
@@ -214,10 +213,10 @@ export default function HistoryScreen() {
 
               <View style={{ flex: 1 }}>
                 <Text style={styles.detailsTitle} numberOfLines={1}>
-                  {selected.title}
+                  {selected.title || "Scan"}
                 </Text>
                 <Text style={styles.detailsMeta}>
-                  {selected.type} • {formatCheckedAt(selected.checkedAt)}
+                  {(selected.type ?? "Scan")} • {formatCheckedAtISO(selected.checkedAt)}
                 </Text>
               </View>
             </View>
@@ -233,17 +232,45 @@ export default function HistoryScreen() {
                   : "Safe • No alerts"}
               </Text>
             </View>
+
+            {/* ✅ (opcional) mostra alergias selecionadas */}
+            {selected.selectedAllergens?.length ? (
+              <>
+                <Text style={styles.detailsLabel}>Selected allergens</Text>
+                <Text style={styles.detailsValue}>{selected.selectedAllergens.join(", ")}</Text>
+              </>
+            ) : null}
+
+            {/* ✅ (opcional) mostra explicação IA */}
+            {selected.aiExplanation ? (
+              <>
+                <Text style={styles.detailsLabel}>AI explanation</Text>
+                <Text style={styles.detailsValue}>{selected.aiExplanation}</Text>
+              </>
+            ) : null}
+
+            {selected.warning ? (
+              <>
+                <Text style={styles.detailsLabel}>Warning</Text>
+                <Text style={styles.detailsValue}>⚠️ {selected.warning}</Text>
+              </>
+            ) : null}
           </>
+        ) : loading ? (
+          <View style={styles.emptySelected}>
+            <Text style={styles.emptySelectedTitle}>Loading...</Text>
+            <Text style={styles.emptySelectedSub}>Fetching your last 10 checks.</Text>
+          </View>
         ) : (
           <View style={styles.emptySelected}>
-            <Text style={styles.emptySelectedTitle}>No item selected</Text>
-            <Text style={styles.emptySelectedSub}>Select a record in the list below to see details here.</Text>
+            <Text style={styles.emptySelectedTitle}>No history yet</Text>
+            <Text style={styles.emptySelectedSub}>Do a scan and your last 10 checks will appear here.</Text>
           </View>
         )}
       </View>
 
       <View style={styles.listHeaderRow}>
-        <Text style={styles.listTitle}>All checks</Text>
+        <Text style={styles.listTitle}>Last 10 checks</Text>
         <Text style={styles.listHint} numberOfLines={2}>
           Tap any row to update details • Hover highlights (web)
         </Text>
@@ -255,7 +282,6 @@ export default function HistoryScreen() {
     <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ “Shell” igual SignIn/Edit: ocupa altura toda, largura limitada no web */}
       <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
           <FlatList
@@ -285,11 +311,11 @@ export default function HistoryScreen() {
 
                     <View style={{ flex: 1 }}>
                       <Text style={styles.rowTitle} numberOfLines={1}>
-                        {item.title}
+                        {item.title || "Scan"}
                       </Text>
 
                       <Text style={styles.rowSub} numberOfLines={1}>
-                        {item.type} • {formatCheckedAt(item.checkedAt)}
+                        {(item.type ?? "Scan")} • {formatCheckedAtISO(item.checkedAt)}
                       </Text>
 
                       {item.hasAlert ? (
@@ -333,12 +359,9 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
-  // ✅ fundo geral
   page: { flex: 1, backgroundColor: "#0b0f12" },
-  // ✅ no web, dá “respiro” e centraliza (igual telas Edit/SignIn)
   pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // ✅ “app shell”
   shell: { flex: 1, width: "100%", backgroundColor: "#0b0f12" },
   shellWeb: {
     height: "100%",
@@ -352,7 +375,7 @@ const styles = StyleSheet.create({
   listContainer: { padding: 16, paddingBottom: 24 },
 
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" }, // sem círculo
+  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   backText: { color: "#fff", fontSize: 28, marginTop: -2 },
   headerTitle: { color: "#4AB625", fontSize: 16, fontWeight: "900" },
 
