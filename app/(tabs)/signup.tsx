@@ -45,6 +45,7 @@ export default function SignUpScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -223,6 +224,15 @@ export default function SignUpScreen() {
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    style={styles.input}
+                  />
+                  <TextInput
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder="Phone"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    autoCapitalize="none"
+                    //keyboardType="phone"
                     style={styles.input}
                   />
                   <TextInput

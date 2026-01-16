@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router, Stack } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import { router, Stack, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   Platform,
@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../app/services/firebase";
 
@@ -34,62 +34,82 @@ export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // ✅ mesmo “tamanho/shell” do Scan/History
   const APP_MAX_W = 920;
   const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
-  const user = auth.currentUser;
+  // ✅ user real (web/mobile)
+  const [user, setUser] = useState<User | null>(auth.currentUser);
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserDoc>({
     fullName: "",
     phone: "",
-    email: user?.email ?? "",
-    photoUrl: user?.photoURL ?? "",
+    email: auth.currentUser?.email ?? "",
+    photoUrl: auth.currentUser?.photoURL ?? "",
   });
 
+  // ✅ mantém o user sincronizado
   useEffect(() => {
-    let mounted = true;
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return unsub;
+  }, []);
 
-    async function load() {
-      try {
-        if (!user?.uid) {
+  // ✅ carrega perfil sempre que a tela ganhar foco (voltar do edit)
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+
+      async function load() {
+        try {
+          setLoading(true);
+
+          if (!user?.uid) {
+            if (mounted) {
+              setProfile({
+                fullName: "",
+                phone: "",
+                email: "",
+                photoUrl: "",
+              });
+            }
+            return;
+          }
+
+          const ref = doc(db, "users", user.uid);
+          const snap = await getDoc(ref);
+
+          if (!mounted) return;
+
+          if (snap.exists()) {
+            const data = snap.data() as UserDoc;
+            setProfile({
+              fullName: data.fullName ?? "",
+              phone: data.phone ?? "",
+              email: data.email ?? user.email ?? "",
+              photoUrl: data.photoUrl ?? user.photoURL ?? "",
+            });
+          } else {
+            // sem doc no Firestore: usa dados do auth
+            setProfile({
+              fullName: "",
+              phone: "",
+              email: user.email ?? "",
+              photoUrl: user.photoURL ?? "",
+            });
+          }
+        } catch (e) {
+          console.log("LOAD PROFILE ERROR:", e);
+        } finally {
           if (mounted) setLoading(false);
-          return;
         }
-
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
-
-        if (!mounted) return;
-
-        if (snap.exists()) {
-          const data = snap.data() as UserDoc;
-          setProfile({
-            fullName: data.fullName ?? "",
-            phone: data.phone ?? "",
-            email: data.email ?? user.email ?? "",
-            photoUrl: data.photoUrl ?? user.photoURL ?? "",
-          });
-        } else {
-          setProfile((p) => ({
-            ...p,
-            email: user.email ?? p.email ?? "",
-            photoUrl: user.photoURL ?? p.photoUrl ?? "",
-          }));
-        }
-      } catch (e) {
-        console.log("LOAD PROFILE ERROR:", e);
-      } finally {
-        if (mounted) setLoading(false);
       }
-    }
 
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [user?.uid]);
+      load();
+      return () => {
+        mounted = false;
+      };
+    }, [user?.uid])
+  );
 
   const initials = useMemo(() => {
     const name = (profile.fullName ?? "").trim();
@@ -125,26 +145,21 @@ export default function ProfileScreen() {
     <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ shell igual Scan/History */}
       <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            {/* Header */}
             <View style={styles.headerRow}>
-              {/* seta discreta (SEM círculo) */}
               <Pressable onPress={goBack} hitSlop={12} style={styles.backBtn}>
                 <Ionicons name="chevron-back" size={20} color="#fff" />
               </Pressable>
 
               <Text style={styles.headerTitle}>Profile</Text>
 
-              {/* lápis */}
               <Pressable onPress={goEdit} hitSlop={12} style={styles.editBtn}>
                 <Ionicons name="pencil" size={18} color="#fff" />
               </Pressable>
             </View>
 
-            {/* Card verde maior (foto + nome) */}
             <View style={styles.greenCard}>
               <View style={styles.avatarWrap}>
                 {profile.photoUrl ? (
@@ -165,7 +180,6 @@ export default function ProfileScreen() {
               <Image source={LOGO} style={styles.miniLogo} />
             </View>
 
-            {/* Itens */}
             <InfoItem icon="call-outline" title="Phone no." value={profile.phone?.trim() || "—"} />
             <InfoItem icon="mail-outline" title="E-Mail" value={profile.email?.trim() || "—"} />
 
@@ -211,11 +225,8 @@ function ActionItem({ icon, title, onPress }: { icon: any; title: string; onPres
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
-
-  // ✅ mesmo comportamento do Scan/History no web
   pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
 
-  // ✅ shell/container do app
   shell: { flex: 1, width: "100%", backgroundColor: "#171A1F" },
   shellWeb: {
     height: "100%",
@@ -226,7 +237,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#171A1F",
   },
 
-  // ✅ mesmo “miolo” do seu profile (padding padrão)
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 22,
@@ -241,12 +251,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // seta discreta (sem bolinha)
   backBtn: { paddingVertical: 6, paddingHorizontal: 2 },
-
   headerTitle: { color: "#fff", fontSize: 16, fontWeight: "900" },
 
-  // lápis
   editBtn: {
     width: 38,
     height: 38,
@@ -258,7 +265,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.10)",
   },
 
-  // card verde
   greenCard: {
     backgroundColor: "#4AB625",
     borderRadius: 18,

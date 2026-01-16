@@ -113,84 +113,137 @@ export default function EditProfileScreen() {
   function goBackToProfile() {
     router.replace(PROFILE_ROUTE);
   }
-
+/////
   async function onSave() {
-    if (saving) return;
+  if (saving) return;
 
-    if (loadingProfile) {
-      Alert.alert("Aguarde", "O perfil ainda está carregando.");
-      return;
-    }
+  if (loadingProfile) {
+    Alert.alert("Aguarde", "O perfil ainda está carregando.");
+    return;
+  }
 
-    if (!user?.uid) {
-      Alert.alert("Erro", "Usuário não autenticado.");
-      return;
-    }
+  if (!user?.uid) {
+    Alert.alert("Erro", "Usuário não autenticado.");
+    return;
+  }
 
-    const fullNameTrim = fullName.trim();
-    const emailTrim = email.trim();
-    const phoneTrim = phone.trim();
-    const passTrim = newPass.trim();
+  const fullNameTrim = fullName.trim();
+  const emailTrim = email.trim();
+  const phoneTrim = phone.trim();
+  const passTrim = newPass.trim();
 
-    if (!fullNameTrim || !emailTrim || !phoneTrim) {
-      Alert.alert("Atenção", "Preencha nome, email e telefone.");
-      return;
-    }
+  //if (!fullNameTrim || !emailTrim || !phoneTrim) {
+    //Alert.alert("Atenção", "Preencha nome, email e telefone.");
+    //return;
+  //}
 
-    if (passTrim.length > 0 && passTrim.length < 6) {
-      Alert.alert("Atenção", "A nova senha precisa ter pelo menos 6 caracteres.");
-      return;
-    }
+  if (!fullNameTrim || !emailTrim) {
+  Alert.alert("Atenção", "Preencha nome e email.");
+  return;
+  }
 
-    setSaving(true);
+  if (passTrim.length > 0 && passTrim.length < 6) {
+    Alert.alert("Atenção", "A nova senha precisa ter pelo menos 6 caracteres.");
+    return;
+  }
 
-    try {
-      // 1) Firestore
-      const ref = doc(db, "users", user.uid);
-      await setDoc(
-        ref,
-        {
-          fullName: fullNameTrim,
-          email: emailTrim,
-          phone: phoneTrim,
-          updatedAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
+  setSaving(true);
 
-      // 2) Auth (email/senha)
-      const currentEmail = user.email ?? "";
+  // ✅ flags pra você saber o que salvou
+  let firestoreOk = false;
+  let authEmailOk = true;
+  let authPassOk = true;
 
-      if (emailTrim !== currentEmail) {
+  try {
+    // 1) Salva Firestore (isso deve funcionar mesmo se Auth falhar)
+    const ref = doc(db, "users", user.uid);
+    await setDoc(
+      ref,
+      {
+        fullName: fullNameTrim,
+        email: emailTrim,
+        phone: phoneTrim,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    firestoreOk = true;
+
+    // 2) Auth: email/senha (pode falhar por requires-recent-login)
+    const currentEmail = user.email ?? "";
+
+    if (emailTrim !== currentEmail) {
+      try {
         await updateEmail(user, emailTrim);
-      }
+      } catch (e: any) {
+        authEmailOk = false;
 
-      if (passTrim.length > 0) {
-        await updatePassword(user, passTrim);
-      }
-
-      Alert.alert("Sucesso", "Dados atualizados! Faça login novamente.");
-
-      await signOut(auth);
-      router.replace("/signin");
-    } catch (err: any) {
-      console.log("SAVE PROFILE ERROR:", err);
-
-      if (String(err?.code).includes("requires-recent-login")) {
-        Alert.alert(
-          "Atenção",
-          "Para atualizar email/senha, o Firebase exige login recente. Faça login novamente."
+        // ⚠️ se falhar, volta o email no Firestore para não ficar inconsistente
+        // (opcional, mas recomendado)
+        await setDoc(
+          ref,
+          { email: currentEmail, updatedAt: new Date().toISOString() },
+          { merge: true }
         );
-        await signOut(auth);
-        router.replace("/signin");
+
+        if (String(e?.code).includes("requires-recent-login")) {
+          Alert.alert(
+            "Salvo (parcial)",
+            "Nome/telefone foram salvos. Para mudar o EMAIL, o Firebase exige login recente. Faça login novamente e tente trocar o email."
+          );
+          return;
+        }
+
+        Alert.alert(
+          "Salvo (parcial)",
+          `Nome/telefone foram salvos, mas o email NÃO foi atualizado no Auth.\n\nErro: ${e?.message ?? e}`
+        );
         return;
       }
-
-      Alert.alert("Erro", err?.message ?? "Não foi possível salvar.");
-    } finally {
-      setSaving(false);
     }
+
+    if (passTrim.length > 0) {
+      try {
+        await updatePassword(user, passTrim);
+      } catch (e: any) {
+        authPassOk = false;
+
+        if (String(e?.code).includes("requires-recent-login")) {
+          Alert.alert(
+            "Salvo (parcial)",
+            "Nome/telefone/email foram salvos. Para mudar a SENHA, o Firebase exige login recente. Faça login novamente e tente trocar a senha."
+          );
+          return;
+        }
+
+        Alert.alert(
+          "Salvo (parcial)",
+          `Dados foram salvos, mas a senha NÃO foi atualizada.\n\nErro: ${e?.message ?? e}`
+        );
+        return;
+      }
+    }
+
+    // ✅ Se chegou aqui, salvou Firestore e (se aplicável) Auth
+    Alert.alert("Sucesso", "Dados atualizados!");
+
+    // ❗ Não precisa deslogar sempre.
+    // Só deslogue se você realmente atualizou email/senha com sucesso.
+    if (!authEmailOk || !authPassOk) return;
+
+    // Se você quer manter a exigência de relogar sempre, deixe isso:
+    await signOut(auth);
+    router.replace("/signin");
+  } catch (err: any) {
+    console.log("SAVE PROFILE ERROR:", err);
+    Alert.alert("Erro", err?.message ?? "Não foi possível salvar.");
+  } finally {
+    setSaving(false);
   }
+}
+
+
+  ///////
 
   return (
     <View style={[styles.page, isWeb && styles.pageWeb]}>
