@@ -142,7 +142,7 @@ export default function CameraScreen() {
                 ) : (
                   <View style={styles.cameraOff}>
                     <Ionicons
-                      name="camera-off-outline"
+                      name="camera-outline"
                       size={28}
                       color="rgba(255,255,255,0.55)"
                     />
