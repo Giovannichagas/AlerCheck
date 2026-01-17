@@ -28,19 +28,21 @@ function safeDecode(s: string) {
   }
 }
 
-// WEB: converte URI -> base64
-async function uriToBase64Web(uri: string): Promise<string> {
+// ✅ WEB: converte URI -> DATA URL completo (data:image/...;base64,XXXX)
+// Isso aumenta compatibilidade com backend/LLM.
+async function uriToDataUrlWeb(uri: string): Promise<string> {
   const resp = await fetch(uri);
+  if (!resp.ok) {
+    throw new Error(`No se pudo leer la imagen (HTTP ${resp.status}).`);
+  }
   const blob = await resp.blob();
 
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const dataUrl = String(reader.result); // data:image/...;base64,XXXX
-      const base64 = dataUrl.split(",")[1] || "";
-      resolve(base64);
+      resolve(String(reader.result)); // ✅ data:image/...;base64,XXXX
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error("Error al convertir la imagen a base64."));
     reader.readAsDataURL(blob);
   });
 }
@@ -65,7 +67,6 @@ function makeTitle(ingredients: string) {
   if (!s) return "Scan (photo only)";
   const first = s.split(",")[0]?.trim();
   if (!first) return "Scan";
-  // limita tamanho
   return first.length > 28 ? `${first.slice(0, 28)}…` : first;
 }
 
@@ -117,6 +118,13 @@ export default function ScanResultScreen() {
     })();
   }, []);
 
+  // ✅ debug: confirma o que chegou por rota
+  useEffect(() => {
+    console.log("[ScanResult] ingredients:", ingredients);
+    console.log("[ScanResult] selectedAllergens:", selectedAllergens);
+    console.log("[ScanResult] photoUri:", photoUri);
+  }, [ingredients, selectedAllergens.join(","), photoUri]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -143,16 +151,23 @@ export default function ScanResultScreen() {
 
         let imageBase64: string | undefined;
 
-        // ✅ no WEB, converte a imagem para base64 e envia para o backend
+        // ✅ WEB: converte para DATA URL completo e envia para o backend
         if (photoUri && Platform.OS === "web") {
-          imageBase64 = await uriToBase64Web(photoUri);
+          const dataUrl = await uriToDataUrlWeb(photoUri);
+          console.log("[ScanResult] dataUrl length:", dataUrl.length);
+          imageBase64 = dataUrl;
+        }
+
+        // Se no WEB veio photoUri mas não gerou base64, avisa
+        if (Platform.OS === "web" && photoUri && !imageBase64) {
+          throw new Error("No se pudo convertir la imagen para analizar.");
         }
 
         const resp = await allergenCheck({
           ingredientsText: ingredients, // pode ser "" se só foto
           allergens: selectedAllergens,
           locale: "pt-BR",
-          imageBase64, // opcional
+          imageBase64, // ✅ data URL no WEB
         });
 
         if (!mounted) return;
@@ -180,6 +195,7 @@ export default function ScanResultScreen() {
         setHistory(next);
       } catch (e: any) {
         if (!mounted) return;
+        console.log("[ScanResult] AI ERROR:", e);
         setAiError(e?.message ?? "Error al realizar la consulta a la IA.");
         setAi(null);
       } finally {
@@ -269,8 +285,11 @@ export default function ScanResultScreen() {
               <Text style={styles.debugLabel}>Ingredientes:</Text>
               <Text style={styles.debugValue}>{ingredients || "-"}</Text>
 
-              <Text style={styles.debugLabel}>Alérgenos seleccionados (verdaderos):</Text>
+              <Text style={styles.debugLabel}>Alérgenos seleccionados:</Text>
               <Text style={styles.debugValue}>{selectedAllergens.length ? selectedAllergens.join(", ") : "-"}</Text>
+
+              <Text style={styles.debugLabel}>PhotoUri:</Text>
+              <Text style={styles.debugValue}>{photoUri || "-"}</Text>
 
               <Text style={styles.debugLabel}>Respuesta IA:</Text>
               {aiLoading ? (
@@ -304,7 +323,7 @@ export default function ScanResultScreen() {
                     onHoverOut={isWeb ? () => setHoverId(null) : undefined}
                     style={[
                       styles.row,
-                      idx === 0 && { borderTopWidth: 0 }, // primeira linha sem “divisor” visual
+                      idx === 0 && { borderTopWidth: 0 },
                       hovered && styles.rowHover,
                       item.hasAlert && styles.rowAlertBorder,
                     ]}
@@ -395,7 +414,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     alignItems: "center",
   },
-  productImg: { width: 54, height: 54, borderRadius: 12, resizeMode: "cover" },
+  productImg: { width: 54, height: 54, borderRadius: 12, note: undefined as any, resizeMode: "cover" } as any,
   productTitle: { color: "#fff", fontWeight: "900", fontSize: 13 },
   productSub: { color: "rgba(255,255,255,0.70)", fontSize: 11.5, marginTop: 3 },
   productMeta: { color: "rgba(255,255,255,0.55)", fontSize: 11, marginTop: 6 },

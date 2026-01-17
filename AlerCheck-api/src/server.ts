@@ -4,14 +4,15 @@ import express from "express";
 import { z } from "zod";
 
 const app = express();
+
 app.use(cors({ origin: "*" }));
-app.use(express.json({ limit: "10mb" })); // ✅ maior por causa de base64
+app.use(express.json({ limit: "25mb" })); // ✅ maior por causa de base64 (foto)
 
 const BodySchema = z.object({
   ingredientsText: z.string().optional().default(""),
   allergens: z.array(z.string().min(1)).default([]),
   locale: z.string().optional(),
-  imageBase64: z.string().optional(), // ✅ foto (base64)
+  imageBase64: z.string().optional(), // ✅ pode vir como dataURL OU base64 puro
 });
 
 app.post("/api/allergen-check", async (req, res) => {
@@ -19,14 +20,14 @@ app.post("/api/allergen-check", async (req, res) => {
     const { ingredientsText, allergens, locale, imageBase64 } = BodySchema.parse(req.body);
 
     // normaliza texto do prato (aceita , ; \n)
-    const normalizedIngredients = ingredientsText
+    const normalizedIngredients = (ingredientsText ?? "")
       .split(/[,;\n]+/g)
       .map((s) => s.trim())
       .filter(Boolean)
       .join(", ");
 
     if (!normalizedIngredients && !imageBase64) {
-      return res.status(400).json({ error: "Informe ingredientesText ou envie imageBase64." });
+      return res.status(400).json({ error: "Informe ingredientsText ou envie imageBase64." });
     }
 
     if (allergens.length === 0) {
@@ -40,7 +41,7 @@ app.post("/api/allergen-check", async (req, res) => {
       "Responda SOMENTE em JSON válido (sem markdown).",
     ].join(" ");
 
-    const user = `
+    const userPrompt = `
 Idioma: ${locale ?? "pt-BR"}
 
 Alergias selecionadas pelo usuário:
@@ -56,7 +57,6 @@ Depois:
 3) Explique brevemente em explanation.
 4) warning deve mencionar contaminação cruzada e que não substitui orientação médica.
 5) safeAlternatives deve ter pelo menos 3 itens, cada um com motivo nutricional (vitaminas/nutrientes).
-Exemplo de motivos: proteína, cálcio, vitamina D, ferro, fibras.
 
 Retorne APENAS JSON:
 {
@@ -70,33 +70,72 @@ Retorne APENAS JSON:
 IMPORTANTE: responda APENAS com o JSON. Nada antes, nada depois.
 `.trim();
 
-    const prompt = `${system}\n\n${user}`.trim();
+    const prompt = `${system}\n\n${userPrompt}`.trim();
 
-    const model = imageBase64
+    const hasImage = !!imageBase64;
+
+    const model = hasImage
       ? (process.env.OLLAMA_VISION_MODEL || "llava")
       : (process.env.OLLAMA_MODEL || "llama3.2");
 
-    const body: any = {
-      model,
-      prompt,
-      stream: false,
-    };
+    // ✅ se vier dataURL, extrai só o base64 puro (Ollama precisa base64 puro)
+    const pureBase64 = hasImage
+      ? imageBase64!.includes("base64,")
+        ? imageBase64!.split("base64,")[1]
+        : imageBase64!
+      : undefined;
 
-    if (imageBase64) body.images = [imageBase64];
+    let rawText = "";
 
-    const r = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    if (hasImage) {
+      // ✅ MULTIMODAL: use /api/chat com messages[].images
+      const body = {
+        model,
+        stream: false,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+            images: [pureBase64],
+          },
+        ],
+      };
 
-    if (!r.ok) {
-      const t = await r.text().catch(() => "");
-      return res.status(500).json({ error: "ollama_error", details: t });
+      const r = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const txt = await r.text().catch(() => "");
+      if (!r.ok) {
+        return res.status(500).json({ error: "ollama_error", details: txt });
+      }
+
+      const data = JSON.parse(txt);
+      rawText = String(data?.message?.content ?? "").trim() || "{}";
+    } else {
+      // ✅ TEXTO: pode usar /api/generate
+      const body = {
+        model,
+        prompt,
+        stream: false,
+      };
+
+      const r = await fetch("http://localhost:11434/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const txt = await r.text().catch(() => "");
+      if (!r.ok) {
+        return res.status(500).json({ error: "ollama_error", details: txt });
+      }
+
+      const data = JSON.parse(txt);
+      rawText = String(data?.response ?? "").trim() || "{}";
     }
-
-    const data = await r.json();
-    const rawText = String(data?.response ?? "").trim() || "{}";
 
     // tenta extrair JSON mesmo se vier texto extra
     const start = rawText.indexOf("{");
