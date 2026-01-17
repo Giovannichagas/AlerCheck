@@ -1,20 +1,16 @@
 {
   "compilerOptions": {
-    "module": "nodenext",
-    "target": "esnext",
-    "types": [],
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
     "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
+    "sourceMap": true,
+
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "extends": "expo/tsconfig.base"
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
 }
