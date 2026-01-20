@@ -220,19 +220,19 @@ export default function SignUpScreen() {
                   <TextInput
                     value={email}
                     onChangeText={setEmail}
-                    placeholder="Email ID"
+                    placeholder="Phone"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     autoCapitalize="none"
-                    keyboardType="email-address"
+                    //keyboardType="/phone"
                     style={styles.input}
                   />
                   <TextInput
                     value={phone}
                     onChangeText={setPhone}
-                    placeholder="Phone"
+                    placeholder="Email ID"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     autoCapitalize="none"
-                    //keyboardType="phone"
+                    keyboardType="email-address"
                     style={styles.input}
                   />
                   <TextInput
