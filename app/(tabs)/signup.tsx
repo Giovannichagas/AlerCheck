@@ -23,24 +23,44 @@ import {
   signInWithRedirect,
   updateProfile,
 } from "firebase/auth";
-import { auth } from "../../app/services/firebase";
+
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+
+// ✅ IMPORT CORRETO (seu firebase.ts está em /services/firebase.ts)
+import { auth, db } from "../services/firebase";
 
 const LOGO = require("../../assets/images/logo.jpeg");
 const ICON_GOOGLE = require("../../assets/images/google.jpg");
 const ICON_APPLE = require("../../assets/images/apple.jpg");
 const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
 
+// ✅ helper para nunca travar em "Creando..."
+async function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("TIMEOUT")), ms);
+    promise
+      .then((v) => {
+        clearTimeout(t);
+        resolve(v);
+      })
+      .catch((e) => {
+        clearTimeout(t);
+        reject(e);
+      });
+  });
+}
+
 export default function SignUpScreen() {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
-  // ✅ mesmo “tamanho/shell” do Scan/History
   const APP_MAX_W = 920;
   const shellW = isWeb ? Math.min(width - 32, APP_MAX_W) : "100%";
 
-  // ✅ mantém o formulário legível dentro do shell
   const CONTENT_MAX_W = 520;
-  const contentW = isWeb ? Math.min((shellW as number) - 32, CONTENT_MAX_W) : "100%";
+  const contentW = isWeb
+    ? Math.min((shellW as number) - 32, CONTENT_MAX_W)
+    : "100%";
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -50,65 +70,138 @@ export default function SignUpScreen() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ captura retorno do redirect (quando popup é bloqueado)
+  // ✅ retorno do redirect (web)
   useEffect(() => {
     if (Platform.OS !== "web") return;
 
     getRedirectResult(auth)
-      .then((result) => {
+      .then(async (result) => {
         if (result?.user) {
-          Alert.alert("Bem-vindo!", result.user.email || "");
-          router.replace("/(tabs)/frame3");
+          // Firestore não bloqueia
+          try {
+            await withTimeout(
+              setDoc(
+                doc(db, "users", result.user.uid),
+                {
+                  fullName: result.user.displayName ?? "",
+                  email: result.user.email ?? "",
+                  phone: result.user.phoneNumber ?? "",
+                  provider: "google",
+                  createdAt: serverTimestamp(),
+                },
+                { merge: true },
+              ),
+              8000,
+            );
+          } catch (e) {
+            console.log("Firestore save (redirect) failed:", e);
+          }
+
+          Alert.alert("¡Bienvenido!", result.user.email || "");
+          router.replace("/(tabs)/scan");
         }
       })
       .catch((e) => console.log("Redirect error:", e));
   }, []);
 
   const onCreateAccount = async () => {
-    if (!firstName || !lastName || !email || !pass || !confirm) {
-      Alert.alert("Atenção", "Preencha todos os campos.");
+    if (
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !email.trim() ||
+      !pass ||
+      !confirm
+    ) {
+      Alert.alert(
+        "Atención",
+        "Por favor, completa todos los campos obligatorios.",
+      );
       return;
     }
+
     if (pass !== confirm) {
-      Alert.alert("Atenção", "As senhas não coincidem.");
+      Alert.alert("Atención", "Las contraseñas no coinciden.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email.trim(),
-        pass
+      console.log("Creando usuario en Auth...");
+
+      // ✅ timeout para não ficar pendurado
+      const userCredential = await withTimeout(
+        createUserWithEmailAndPassword(auth, email.trim(), pass),
+        12000,
       );
 
-      // ✅ opcional: salvar nome no perfil do Firebase Auth
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
       if (auth.currentUser && fullName) {
-        await updateProfile(auth.currentUser, { displayName: fullName });
+        await withTimeout(
+          updateProfile(auth.currentUser, { displayName: fullName }),
+          8000,
+        );
       }
 
-      Alert.alert("Conta criada!", `Bem-vindo ${userCredential.user.email ?? ""}`);
-      router.replace("/(tabs)/frame3");
+      // Firestore: tenta salvar, mas NÃO trava
+      try {
+        console.log("Guardando en Firestore...");
+        await withTimeout(
+          setDoc(
+            doc(db, "users", userCredential.user.uid),
+            {
+              firstName: firstName.trim(),
+              lastName: lastName.trim(),
+              fullName,
+              email: email.trim(),
+              phone: phone.trim(),
+              provider: "password",
+              createdAt: serverTimestamp(),
+            },
+            { merge: true },
+          ),
+          8000,
+        );
+      } catch (e) {
+        console.log("Firestore save failed (non-blocking):", e);
+      }
+
+      Alert.alert(
+        "¡Cuenta creada!",
+        "Registro completado. Redirigiendo a Scan...",
+      );
+      router.replace("/(tabs)/scan");
     } catch (error: any) {
       console.log("SIGNUP ERROR:", error);
 
-      const code = error?.code;
-      if (code === "auth/email-already-in-use") {
-        Alert.alert("Erro", "Esse email já está em uso.");
-        return;
-      }
-      if (code === "auth/invalid-email") {
-        Alert.alert("Erro", "Email inválido.");
-        return;
-      }
-      if (code === "auth/weak-password") {
-        Alert.alert("Erro", "Senha fraca. Use pelo menos 6 caracteres.");
+      if (error?.message === "TIMEOUT") {
+        Alert.alert(
+          "Error",
+          "Tiempo de espera agotado al conectar con Firebase. Revisa tu conexión o configuración.",
+        );
         return;
       }
 
-      Alert.alert("Erro ao criar conta", error.message);
+      const code = error?.code;
+
+      if (code === "auth/email-already-in-use") {
+        Alert.alert("Error", "Este correo electrónico ya está en uso.");
+        return;
+      }
+      if (code === "auth/invalid-email") {
+        Alert.alert("Error", "El correo electrónico no es válido.");
+        return;
+      }
+      if (code === "auth/weak-password") {
+        Alert.alert("Error", "Contraseña débil. Usa al menos 6 caracteres.");
+        return;
+      }
+
+      Alert.alert(
+        "Error al crear la cuenta",
+        error?.message ?? "Ocurrió un error.",
+      );
     } finally {
       setLoading(false);
     }
@@ -121,17 +214,42 @@ export default function SignUpScreen() {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
 
-      // ✅ Expo Web: popup é o melhor
       if (Platform.OS === "web") {
         try {
-          const result = await signInWithPopup(auth, provider);
-          Alert.alert("Bem-vindo!", result.user.email || "");
-          router.replace("/(tabs)/frame3");
+          const result = await withTimeout(
+            signInWithPopup(auth, provider),
+            12000,
+          );
+
+          // Firestore não bloqueia
+          try {
+            await withTimeout(
+              setDoc(
+                doc(db, "users", result.user.uid),
+                {
+                  fullName: result.user.displayName ?? "",
+                  email: result.user.email ?? "",
+                  phone: result.user.phoneNumber ?? "",
+                  provider: "google",
+                  createdAt: serverTimestamp(),
+                },
+                { merge: true },
+              ),
+              8000,
+            );
+          } catch (e) {
+            console.log("Firestore save (google) failed:", e);
+          }
+
+          Alert.alert("¡Bienvenido!", result.user.email || "");
+          router.replace("/(tabs)/scan");
         } catch (e: any) {
-          // Se popup for bloqueado/fechado, cai para redirect
-          if (e?.code === "auth/popup-blocked" || e?.code === "auth/popup-closed-by-user") {
+          if (
+            e?.code === "auth/popup-blocked" ||
+            e?.code === "auth/popup-closed-by-user"
+          ) {
             await signInWithRedirect(auth, provider);
-            return; // retorno será capturado no useEffect
+            return;
           }
           throw e;
         }
@@ -139,31 +257,39 @@ export default function SignUpScreen() {
       }
 
       Alert.alert(
-        "Info",
-        "No mobile vamos configurar Google depois (expo-auth-session / google-signin)."
+        "Información",
+        "En móvil configuraremos Google después (expo-auth-session / google-signin).",
       );
     } catch (error: any) {
       console.log("GOOGLE SIGNUP ERROR:", error);
+
+      if (error?.message === "TIMEOUT") {
+        Alert.alert("Error", "Tiempo de espera agotado. Revisa tu conexión.");
+        return;
+      }
 
       const code = error?.code;
 
       if (code === "auth/unauthorized-domain") {
         Alert.alert(
-          "Erro",
-          "Domínio não autorizado. Adicione 'localhost' (e/ou '127.0.0.1') em Firebase Auth → Settings → Authorized domains."
+          "Error",
+          "Dominio no autorizado. Agrega 'localhost' (y/o '127.0.0.1') en Firebase Auth → Settings → Authorized domains.",
         );
         return;
       }
 
       if (code === "auth/operation-not-allowed") {
         Alert.alert(
-          "Erro",
-          "Provedor Google não está habilitado. Ative em Firebase Auth → Sign-in method → Google."
+          "Error",
+          "El proveedor Google no está habilitado. Actívalo en Firebase Auth → Sign-in method → Google.",
         );
         return;
       }
 
-      Alert.alert("Erro", error?.message ?? "Falha ao entrar com Google.");
+      Alert.alert(
+        "Error",
+        error?.message ?? "Error al iniciar sesión con Google.",
+      );
     } finally {
       setLoading(false);
     }
@@ -171,14 +297,16 @@ export default function SignUpScreen() {
 
   const onSocial = (provider: string) => {
     if (provider === "Google") return onGoogleSignUp();
-    Alert.alert("Login social", `Clicou em: ${provider}`);
+    Alert.alert("Inicio social", `Has pulsado: ${provider}`);
   };
 
   return (
     <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+      <View
+        style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}
+      >
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
           <KeyboardAvoidingView
             style={{ flex: 1, width: "100%" }}
@@ -189,56 +317,66 @@ export default function SignUpScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
+              <View
+                style={[
+                  styles.contentWrap,
+                  isWeb && { width: contentW, alignSelf: "center" },
+                ]}
+              >
                 <View style={styles.topRow}>
-                  {/* ✅ use rota absoluta para evitar bugs */}
-                  <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
+                  <Pressable
+                    onPress={() => router.replace("/(tabs)/scan")}
+                    style={styles.backBtn}
+                  >
                     <Text style={styles.backText}>‹</Text>
                   </Pressable>
                 </View>
 
                 <View style={styles.header}>
                   <Image source={LOGO} style={styles.logo} />
-                  <Text style={styles.screenTitle}>Sign Up</Text>
+                  <Text style={styles.screenTitle}>Crear cuenta</Text>
                 </View>
 
                 <View style={styles.form}>
                   <TextInput
                     value={firstName}
                     onChangeText={setFirstName}
-                    placeholder="First Name"
+                    placeholder="Nombre"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     style={styles.input}
                   />
                   <TextInput
                     value={lastName}
                     onChangeText={setLastName}
-                    placeholder="Last Name"
+                    placeholder="Apellido"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     style={styles.input}
                   />
-                  <TextInput
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Phone"
-                    placeholderTextColor="rgba(255,255,255,0.35)"
-                    autoCapitalize="none"
-                    //keyboardType="/phone"
-                    style={styles.input}
-                  />
+
                   <TextInput
                     value={phone}
                     onChangeText={setPhone}
-                    placeholder="Email ID"
+                    placeholder="Teléfono (opcional)"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    keyboardType="phone-pad"
+                    autoCapitalize="none"
+                    style={styles.input}
+                  />
+
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Correo electrónico"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     autoCapitalize="none"
                     keyboardType="email-address"
                     style={styles.input}
                   />
+
                   <TextInput
                     value={pass}
                     onChangeText={setPass}
-                    placeholder="Password"
+                    placeholder="Contraseña"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     secureTextEntry
                     style={styles.input}
@@ -246,7 +384,7 @@ export default function SignUpScreen() {
                   <TextInput
                     value={confirm}
                     onChangeText={setConfirm}
-                    placeholder="Confirm Password"
+                    placeholder="Confirmar contraseña"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     secureTextEntry
                     style={styles.input}
@@ -259,20 +397,31 @@ export default function SignUpScreen() {
                       disabled={loading}
                     >
                       <Text style={styles.primaryBtnText}>
-                        {loading ? "Criando..." : "Crear una cuenta"}
+                        {loading ? "Creando..." : "Crear una cuenta"}
                       </Text>
                     </Pressable>
 
                     <View style={styles.dividerRow}>
                       <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>Iniciar sesión con</Text>
+                      <Text style={styles.dividerText}>
+                        O iniciar sesión con
+                      </Text>
                       <View style={styles.dividerLine} />
                     </View>
 
                     <View style={styles.socialRow}>
-                      <SocialIcon icon={ICON_GOOGLE} onPress={() => onSocial("Google")} />
-                      <SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
-                      <SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
+                      <SocialIcon
+                        icon={ICON_GOOGLE}
+                        onPress={() => onSocial("Google")}
+                      />
+                      <SocialIcon
+                        icon={ICON_APPLE}
+                        onPress={() => onSocial("Apple")}
+                      />
+                      <SocialIcon
+                        icon={ICON_FACEBOOK}
+                        onPress={() => onSocial("Facebook")}
+                      />
                     </View>
                   </View>
                 </View>
@@ -309,7 +458,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#0b0f12",
   },
 
-  scroll: { flexGrow: 1, padding: 16, paddingBottom: 24, justifyContent: "center" },
+  scroll: {
+    flexGrow: 1,
+    padding: 16,
+    paddingBottom: 24,
+    justifyContent: "center",
+  },
 
   contentWrap: {
     flex: 1,
@@ -324,12 +478,23 @@ const styles = StyleSheet.create({
   },
 
   topRow: { height: 40, justifyContent: "center" },
-  backBtn: { width: 40, height: 40, borderRadius: 999, justifyContent: "center", alignItems: "center" },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   backText: { color: "#fff", fontSize: 28, marginTop: -2 },
 
   header: { alignItems: "center", marginTop: 8, marginBottom: 18 },
   logo: { width: 92, height: 92, resizeMode: "contain", marginBottom: 10 },
-  screenTitle: { color: "#fff", fontSize: 16, fontWeight: "800", marginTop: 10 },
+  screenTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "800",
+    marginTop: 10,
+  },
 
   form: { flex: 1, marginTop: 6 },
 
@@ -356,9 +521,22 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
 
-  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.18)" },
-  dividerText: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "700" },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  dividerText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   socialRow: { flexDirection: "row", justifyContent: "center", gap: 18 },
   socialBtn: {
