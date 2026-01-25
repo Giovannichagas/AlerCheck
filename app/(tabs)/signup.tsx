@@ -31,8 +31,8 @@ import { auth, db } from "../services/firebase";
 
 const LOGO = require("../../assets/images/logo.jpeg");
 const ICON_GOOGLE = require("../../assets/images/google.jpg");
-const ICON_APPLE = require("../../assets/images/apple.jpg");
-const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
+//const ICON_APPLE = require("../../assets/images/apple.jpg");
+//const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
 
 // ✅ helper para nunca travar em "Creando..."
 async function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
@@ -414,14 +414,6 @@ export default function SignUpScreen() {
                         icon={ICON_GOOGLE}
                         onPress={() => onSocial("Google")}
                       />
-                      <SocialIcon
-                        icon={ICON_APPLE}
-                        onPress={() => onSocial("Apple")}
-                      />
-                      <SocialIcon
-                        icon={ICON_FACEBOOK}
-                        onPress={() => onSocial("Facebook")}
-                      />
                     </View>
                   </View>
                 </View>
@@ -435,6 +427,19 @@ export default function SignUpScreen() {
     </View>
   );
 }
+
+//linha 417
+/*
+<SocialIcon
+                        icon={ICON_APPLE}
+                        onPress={() => onSocial("Apple")}
+                      />
+                      <SocialIcon
+                        icon={ICON_FACEBOOK}
+                        onPress={() => onSocial("Facebook")}
+                      />
+
+*/
 
 function SocialIcon({ icon, onPress }: { icon: any; onPress: () => void }) {
   return (

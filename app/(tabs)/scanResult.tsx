@@ -1,3 +1,5 @@
+//tela scanresult 20/01
+
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -14,8 +16,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { allergenCheck, type AllergenCheckResponse } from "../services/alercheckApi";
-import { addHistory, getHistory, type StoredHistoryItem } from "../services/historyStore";
+import {
+  allergenCheck,
+  type AllergenCheckResponse,
+} from "../services/alercheckApi";
+import {
+  addHistory,
+  getHistory,
+  type StoredHistoryItem,
+} from "../services/historyStore";
 
 const PLACEHOLDER = require("../../assets/images/logo.jpeg");
 
@@ -42,7 +51,8 @@ async function uriToDataUrlWeb(uri: string): Promise<string> {
     reader.onloadend = () => {
       resolve(String(reader.result)); // ✅ data:image/...;base64,XXXX
     };
-    reader.onerror = () => reject(new Error("Error al convertir la imagen a base64."));
+    reader.onerror = () =>
+      reject(new Error("Error al convertir la imagen a base64."));
     reader.readAsDataURL(blob);
   });
 }
@@ -174,7 +184,8 @@ export default function ScanResultScreen() {
         setAi(resp);
 
         // ✅ salva no histórico (topo) e mantém só 10
-        const hasAlertLocal = !!resp?.hasRisk || (resp?.matched?.length ?? 0) > 0;
+        const hasAlertLocal =
+          !!resp?.hasRisk || (resp?.matched?.length ?? 0) > 0;
 
         const itemToSave: StoredHistoryItem = {
           id: String(Date.now()),
@@ -220,11 +231,20 @@ export default function ScanResultScreen() {
     <View style={[styles.page, isWeb && styles.pageWeb]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+      <View
+        style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}
+      >
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.headerRow}>
-              <Pressable onPress={() => router.replace("/(tabs)/scan")} style={styles.backBtn} hitSlop={10}>
+              <Pressable
+                onPress={() => router.replace("/(tabs)/scan")}
+                style={styles.backBtn}
+                hitSlop={10}
+              >
                 <Text style={styles.backText}>‹</Text>
               </Pressable>
 
@@ -233,43 +253,73 @@ export default function ScanResultScreen() {
             </View>
 
             <View style={styles.productCard}>
-              <Image source={photoUri ? { uri: photoUri } : PLACEHOLDER} style={styles.productImg} />
+              <Image
+                source={photoUri ? { uri: photoUri } : PLACEHOLDER}
+                style={styles.productImg}
+              />
               <View style={{ flex: 1 }}>
-                <Text style={styles.productTitle}>Datos recibidos correctamente</Text>
+                <Text style={styles.productTitle}>
+                  Datos recibidos correctamente
+                </Text>
                 <Text style={styles.productSub} numberOfLines={2}>
-                  {ingredients || "Sin ingredientes introducidos (solo escaneo con foto)"}
+                  {ingredients ||
+                    "Sin ingredientes introducidos (solo escaneo con foto)"}
                 </Text>
                 <Text style={styles.productMeta}>
-                  Alérgenos verdaderos: {selectedAllergens.length ? selectedAllergens.join(", ") : "None"}
+                  Alérgenos verdaderos:{" "}
+                  {selectedAllergens.length
+                    ? selectedAllergens.join(", ")
+                    : "None"}
                 </Text>
               </View>
             </View>
 
             <Text style={styles.sectionTitle}>Allergens</Text>
 
-            <View style={[styles.alertCard, hasAlert ? styles.alertDanger : styles.alertSafe]}>
-              <Text style={styles.alertTitle}>{hasAlert ? "Alerta de alérgenos" : "Ningún alérgeno detectado"}</Text>
+            <View
+              style={[
+                styles.alertCard,
+                hasAlert ? styles.alertDanger : styles.alertSafe,
+              ]}
+            >
+              <Text style={styles.alertTitle}>
+                {hasAlert ? "Alerta de alérgenos" : "Ningún alérgeno detectado"}
+              </Text>
 
               {aiLoading ? (
-                <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
                   <ActivityIndicator />
                   <Text style={styles.alertText}>Consultando IA...</Text>
                 </View>
               ) : aiError ? (
                 <Text style={styles.alertText}>Erro: {aiError}</Text>
               ) : hasAlert ? (
-                <Text style={styles.alertText}>Matched: {(ai?.matched ?? []).join(", ") || "-"}</Text>
+                <Text style={styles.alertText}>
+                  Matched: {(ai?.matched ?? []).join(", ") || "-"}
+                </Text>
               ) : (
-                <Text style={styles.alertText}>No hay coincidencias según los alérgenos seleccionados.</Text>
+                <Text style={styles.alertText}>
+                  No hay coincidencias según los alérgenos seleccionados.
+                </Text>
               )}
 
               {!aiLoading && !aiError && ai?.warning ? (
-                <Text style={[styles.alertText, { marginTop: 10 }]}>⚠️ {ai.warning}</Text>
+                <Text style={[styles.alertText, { marginTop: 10 }]}>
+                  ⚠️ {ai.warning}
+                </Text>
               ) : null}
 
               {!aiLoading && !aiError && ai?.safeAlternatives?.length ? (
                 <View style={{ marginTop: 10 }}>
-                  <Text style={[styles.alertText, { fontWeight: "900" }]}>Alternativas sugeridas:</Text>
+                  <Text style={[styles.alertText, { fontWeight: "900" }]}>
+                    Alternativas sugeridas:
+                  </Text>
                   {ai.safeAlternatives.map((alt, idx) => (
                     <Text key={idx} style={styles.alertText}>
                       • {alt.item} — {alt.why}
@@ -286,10 +336,11 @@ export default function ScanResultScreen() {
               <Text style={styles.debugValue}>{ingredients || "-"}</Text>
 
               <Text style={styles.debugLabel}>Alérgenos seleccionados:</Text>
-              <Text style={styles.debugValue}>{selectedAllergens.length ? selectedAllergens.join(", ") : "-"}</Text>
+              <Text style={styles.debugValue}>
+                {selectedAllergens.length ? selectedAllergens.join(", ") : "-"}
+              </Text>
 
               <Text style={styles.debugLabel}>PhotoUri:</Text>
-              <Text style={styles.debugValue}>{photoUri || "-"}</Text>
 
               <Text style={styles.debugLabel}>Respuesta IA:</Text>
               {aiLoading ? (
@@ -299,7 +350,11 @@ export default function ScanResultScreen() {
               ) : ai ? (
                 <>
                   <Text style={styles.debugValue}>{ai.explanation || "-"}</Text>
-                  {!!ai.matched?.length && <Text style={styles.debugValue}>Matched: {ai.matched.join(", ")}</Text>}
+                  {!!ai.matched?.length && (
+                    <Text style={styles.debugValue}>
+                      Matched: {ai.matched.join(", ")}
+                    </Text>
+                  )}
                 </>
               ) : (
                 <Text style={styles.debugValue}>-</Text>
@@ -307,8 +362,12 @@ export default function ScanResultScreen() {
             </View>
 
             <View style={styles.listHeaderRow}>
-              <Text style={styles.listTitle}>Comprobaciones recientes (últimas 10)</Text>
-              <Text style={styles.listHint}>Pulsa la flecha para abrir el historial</Text>
+              <Text style={styles.listTitle}>
+                Comprobaciones recientes (últimas 10)
+              </Text>
+              <Text style={styles.listHint}>
+                Pulsa la flecha para abrir el historial
+              </Text>
             </View>
 
             <View style={styles.listCard}>
@@ -363,14 +422,19 @@ export default function ScanResultScreen() {
 
               {!history.length ? (
                 <View style={{ padding: 14 }}>
-                  <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
+                  <Text
+                    style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}
+                  >
                     Aún no hay historial. Haz un escaneo para que aparezca aquí.
                   </Text>
                 </View>
               ) : null}
             </View>
 
-            <Pressable style={styles.btn} onPress={() => router.replace("/(tabs)/scan")}>
+            <Pressable
+              style={styles.btn}
+              onPress={() => router.replace("/(tabs)/scan")}
+            >
               <Text style={styles.btnText}>Volver a escanear</Text>
             </Pressable>
 
@@ -381,7 +445,7 @@ export default function ScanResultScreen() {
     </View>
   );
 }
-
+//<Text style={styles.debugValue}>{photoUri || "-"}</Text> linha 344
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#0b0f12" },
   pageWeb: { padding: 16, alignItems: "center", justifyContent: "center" },
@@ -398,8 +462,19 @@ const styles = StyleSheet.create({
 
   scroll: { padding: 16, paddingBottom: 24 },
 
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  backBtn: { width: 40, height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   backText: { color: "#fff", fontSize: 28, marginTop: -2 },
   headerTitle: { color: "#4AB625", fontSize: 16, fontWeight: "800" },
 
@@ -414,17 +489,44 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     alignItems: "center",
   },
-  productImg: { width: 54, height: 54, borderRadius: 12, note: undefined as any, resizeMode: "cover" } as any,
+  productImg: {
+    width: 54,
+    height: 54,
+    borderRadius: 12,
+    note: undefined as any,
+    resizeMode: "cover",
+  } as any,
   productTitle: { color: "#fff", fontWeight: "900", fontSize: 13 },
   productSub: { color: "rgba(255,255,255,0.70)", fontSize: 11.5, marginTop: 3 },
   productMeta: { color: "rgba(255,255,255,0.55)", fontSize: 11, marginTop: 6 },
 
-  sectionTitle: { color: "#fff", fontWeight: "800", fontSize: 14, marginBottom: 10 },
+  sectionTitle: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 14,
+    marginBottom: 10,
+  },
 
-  alertCard: { borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1 },
-  alertDanger: { backgroundColor: "rgba(255,77,77,0.10)", borderColor: "rgba(255,77,77,0.35)" },
-  alertSafe: { backgroundColor: "rgba(74,182,37,0.10)", borderColor: "rgba(74,182,37,0.35)" },
-  alertTitle: { color: "#fff", fontWeight: "900", fontSize: 13, marginBottom: 6 },
+  alertCard: {
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+  },
+  alertDanger: {
+    backgroundColor: "rgba(255,77,77,0.10)",
+    borderColor: "rgba(255,77,77,0.35)",
+  },
+  alertSafe: {
+    backgroundColor: "rgba(74,182,37,0.10)",
+    borderColor: "rgba(74,182,37,0.35)",
+  },
+  alertTitle: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 13,
+    marginBottom: 6,
+  },
   alertText: { color: "rgba(255,255,255,0.75)", fontSize: 12, lineHeight: 16 },
 
   debugCard: {
@@ -439,7 +541,13 @@ const styles = StyleSheet.create({
   debugLabel: { color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 8 },
   debugValue: { color: "#fff", fontSize: 12, marginTop: 2 },
 
-  listHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 4, marginBottom: 10 },
+  listHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: 4,
+    marginBottom: 10,
+  },
   listTitle: { color: "#fff", fontWeight: "900", fontSize: 13 },
   listHint: { color: "rgba(255,255,255,0.45)", fontSize: 11 },
 
@@ -462,18 +570,47 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(255,255,255,0.06)",
   },
   rowHover: { backgroundColor: "rgba(255,255,255,0.08)" },
-  rowAlertBorder: { borderLeftWidth: 3, borderLeftColor: "rgba(255,77,77,0.65)" },
+  rowAlertBorder: {
+    borderLeftWidth: 3,
+    borderLeftColor: "rgba(255,77,77,0.65)",
+  },
 
-  rowLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, paddingRight: 10 },
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+    paddingRight: 10,
+  },
   rowIcon: { width: 34, height: 34, borderRadius: 10, resizeMode: "cover" },
   rowTitle: { color: "#fff", fontWeight: "900", fontSize: 12.5 },
   rowSub: { color: "rgba(255,255,255,0.55)", fontSize: 11, marginTop: 2 },
   rowMatched: { color: "rgba(255,255,255,0.75)", fontSize: 11, marginTop: 3 },
-  rowOk: { color: "rgba(74,182,37,0.95)", fontSize: 11, marginTop: 3, fontWeight: "800" },
+  rowOk: {
+    color: "rgba(74,182,37,0.95)",
+    fontSize: 11,
+    marginTop: 3,
+    fontWeight: "800",
+  },
 
-  arrowBtn: { width: 34, height: 34, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.10)", alignItems: "center", justifyContent: "center" },
+  arrowBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   arrowBtnHover: { backgroundColor: "rgba(74,182,37,0.25)" },
 
-  btn: { alignSelf: "center", width: "78%", backgroundColor: "#4AB625", paddingVertical: 12, borderRadius: 999, alignItems: "center", marginTop: 6 },
+  btn: {
+    alignSelf: "center",
+    width: "78%",
+    backgroundColor: "#4AB625",
+    paddingVertical: 12,
+    borderRadius: 999,
+    alignItems: "center",
+    marginTop: 6,
+  },
   btnText: { color: "#fff", fontWeight: "900", fontSize: 13 },
 });

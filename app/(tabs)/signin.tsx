@@ -27,8 +27,8 @@ import { auth } from "../../app/services/firebase";
 // images
 const LOGO = require("../../assets/images/logo.jpeg");
 const ICON_GOOGLE = require("../../assets/images/google.jpg");
-const ICON_APPLE = require("../../assets/images/apple.jpg");
-const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
+//const ICON_APPLE = require("../../assets/images/apple.jpg");
+//const ICON_FACEBOOK = require("../../assets/images/facebook.jpg");
 
 export default function SignInScreen() {
   const { width } = useWindowDimensions();
@@ -40,7 +40,9 @@ export default function SignInScreen() {
 
   // ✅ mantém o formulário legível (mas dentro do shell grande)
   const CONTENT_MAX_W = 520;
-  const contentW = isWeb ? Math.min((shellW as number) - 32, CONTENT_MAX_W) : "100%";
+  const contentW = isWeb
+    ? Math.min((shellW as number) - 32, CONTENT_MAX_W)
+    : "100%";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,7 +74,7 @@ export default function SignInScreen() {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email.trim(),
-        password
+        password,
       );
 
       Alert.alert("Bem-vindo!", userCredential.user.email || "");
@@ -116,7 +118,10 @@ export default function SignInScreen() {
           router.replace("/(tabs)/scan");
         } catch (e: any) {
           // Se popup for bloqueado/fechado, cai para redirect
-          if (e?.code === "auth/popup-blocked" || e?.code === "auth/popup-closed-by-user") {
+          if (
+            e?.code === "auth/popup-blocked" ||
+            e?.code === "auth/popup-closed-by-user"
+          ) {
             await signInWithRedirect(auth, provider);
             return; // o retorno é capturado no useEffect acima
           }
@@ -127,7 +132,7 @@ export default function SignInScreen() {
 
       Alert.alert(
         "Info",
-        "Google no mobile será configurado depois (expo-auth-session / google-signin)."
+        "Google no mobile será configurado depois (expo-auth-session / google-signin).",
       );
     } catch (error: any) {
       console.log("GOOGLE LOGIN ERROR:", error);
@@ -137,7 +142,7 @@ export default function SignInScreen() {
       if (code === "auth/unauthorized-domain") {
         Alert.alert(
           "Erro",
-          "Domínio não autorizado. Adicione 'localhost' (e/ou '127.0.0.1') em Firebase Auth → Settings → Authorized domains."
+          "Domínio não autorizado. Adicione 'localhost' (e/ou '127.0.0.1') em Firebase Auth → Settings → Authorized domains.",
         );
         return;
       }
@@ -145,7 +150,7 @@ export default function SignInScreen() {
       if (code === "auth/operation-not-allowed") {
         Alert.alert(
           "Erro",
-          "Provedor Google não está habilitado. Ative em Firebase Auth → Sign-in method → Google."
+          "Provedor Google não está habilitado. Ative em Firebase Auth → Sign-in method → Google.",
         );
         return;
       }
@@ -170,7 +175,9 @@ export default function SignInScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ✅ shell igual Scan/History (borda discreta no web) */}
-      <View style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}>
+      <View
+        style={[styles.shell, isWeb && [styles.shellWeb, { width: shellW }]]}
+      >
         <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
           <KeyboardAvoidingView
             style={{ flex: 1, width: "100%" }}
@@ -182,10 +189,18 @@ export default function SignInScreen() {
               showsVerticalScrollIndicator={false}
             >
               {/* ✅ conteúdo centralizado no web */}
-              <View style={[styles.contentWrap, isWeb && { width: contentW, alignSelf: "center" }]}>
+              <View
+                style={[
+                  styles.contentWrap,
+                  isWeb && { width: contentW, alignSelf: "center" },
+                ]}
+              >
                 {/* BACK */}
                 <View style={styles.topRow}>
-                  <Pressable onPress={() => router.replace("/(tabs)/frame3")} style={styles.backBtn}>
+                  <Pressable
+                    onPress={() => router.replace("/(tabs)/frame3")}
+                    style={styles.backBtn}
+                  >
                     <Text style={styles.backText}>‹</Text>
                   </Pressable>
                 </View>
@@ -218,8 +233,13 @@ export default function SignInScreen() {
                     style={styles.input}
                   />
 
-                  <Pressable onPress={onForgotPassword} style={styles.forgotWrap}>
-                    <Text style={styles.forgot}>¿Has olvidado tu contraseña?</Text>
+                  <Pressable
+                    onPress={onForgotPassword}
+                    style={styles.forgotWrap}
+                  >
+                    <Text style={styles.forgot}>
+                      ¿Has olvidado tu contraseña?
+                    </Text>
                   </Pressable>
 
                   {/* BOTTOM */}
@@ -241,9 +261,10 @@ export default function SignInScreen() {
                     </View>
 
                     <View style={styles.socialRow}>
-                      <SocialIcon icon={ICON_GOOGLE} onPress={() => onSocial("Google")} />
-                      <SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
-                      <SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
+                      <SocialIcon
+                        icon={ICON_GOOGLE}
+                        onPress={() => onSocial("Google")}
+                      />
                     </View>
                   </View>
                 </View>
@@ -257,6 +278,10 @@ export default function SignInScreen() {
     </View>
   );
 }
+
+//linha 245
+//<SocialIcon icon={ICON_APPLE} onPress={() => onSocial("Apple")} />
+//<SocialIcon icon={ICON_FACEBOOK} onPress={() => onSocial("Facebook")} />
 
 function SocialIcon({ icon, onPress }: { icon: any; onPress: () => void }) {
   return (
@@ -280,7 +305,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#0b0f12",
   },
 
-  scroll: { flexGrow: 1, padding: 16, paddingBottom: 24, justifyContent: "center" },
+  scroll: {
+    flexGrow: 1,
+    padding: 16,
+    paddingBottom: 24,
+    justifyContent: "center",
+  },
 
   contentWrap: {
     backgroundColor: "#171A1F",
@@ -294,7 +324,13 @@ const styles = StyleSheet.create({
   },
 
   topRow: { height: 40, justifyContent: "center" },
-  backBtn: { width: 40, height: 40, borderRadius: 999, justifyContent: "center", alignItems: "center" },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   backText: { color: "#fff", fontSize: 28 },
 
   header: { alignItems: "center", marginBottom: 16 },
@@ -335,9 +371,22 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
 
-  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 18 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.18)" },
-  dividerText: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "700" },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  dividerText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    fontWeight: "700",
+  },
 
   socialRow: { flexDirection: "row", justifyContent: "center", gap: 18 },
   socialBtn: {
